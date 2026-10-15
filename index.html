@@ -160,6 +160,13 @@ nav button.on{color:var(--acc)}
 .ag.ahora .hr::after{content:" ahora";font:600 11px/1 sans-serif;text-transform:uppercase}
 .sos{display:flex;gap:10px;align-items:flex-start;padding:8px 0}.sos input{margin-top:4px}
 .sos.hecho span{text-decoration:line-through;opacity:.55}.sos small{display:block;opacity:.7}
+details.plan summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
+details.plan summary::-webkit-details-marker{display:none}
+details.plan summary::after{content:"";flex:none;width:8px;height:8px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg);transition:transform .2s;margin-right:4px}
+details.plan[open] summary::after{transform:rotate(-135deg)}
+.timer{display:flex;align-items:center;gap:12px;margin-top:12px}.timer b{font:700 34px/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;min-width:86px}
+.timer button{margin-top:0}
+.sos .fu{font-size:11.5px;opacity:.55}
 </style>
 </head>
 <body>
@@ -232,17 +239,45 @@ function sosiHtml(hoy) {
   }).join("") : '<div class="sub">Todavía no hay sí o sí para hoy. El Cierre de anoche los deja aquí (máximo 3).</div>';
   return '<div class="card" id="card-sosi"><div class="sub">Sí o sí de hoy · van antes que todo</div><h2>' + (xs.length ? xs.filter(function (x) { return x.hecho; }).length + " de " + xs.length + " hechos" : "Sin lista") + '</h2>' + cuerpo + '</div>';
 }
+function filaAg(b, d, tarea, C0, est) {
+  var n = b.n, nota = tarea[b.h] || b.nota || "";
+  if (b.t === "gym") { n = d.tipo === "libre" ? "Día libre, sin gym" : "Gym: " + d.n; nota = d.tipo === "libre" ? "Descanso total" : (nota || ""); }
+  if (b.t === "comida" && C0.some(function (x) { return x.slot === b.slot; })) nota = "Registrada" + (nota ? " · " + nota : "");
+  return '<div class="ag' + est + '"><div class="hr">' + b.h + '</div><div class="q"><b>' + esc(n) + '</b>' + (nota ? '<small>' + esc(nota) + '</small>' : "") + '</div></div>';
+}
+// Lo que importa ahora queda a la vista (el bloque actual y los 3 que siguen); lo pasado y el resto del día van plegados.
 function agendaHtml(hoy) {
   var d = diaDe(hoy), p = P[hoy] || {}, ahora = minutos(horaLocal()), tarea = p.bloques || {};
-  var C0 = (C[hoy] || {}).items || [];
-  var filas = D.agenda.bloques.map(function (b) {
-    var ini = minutos(b.h), fin = minutos(b.f), est = ahora >= fin ? " ya" : (ahora >= ini ? " ahora" : "");
-    var n = b.n, nota = tarea[b.h] || b.nota || "";
-    if (b.t === "gym") { n = d.tipo === "libre" ? "Día libre, sin gym" : "Gym: " + d.n; nota = d.tipo === "libre" ? "Descanso total" : (nota || ""); }
-    if (b.t === "comida" && C0.some(function (x) { return x.slot === b.slot; })) nota = "Registrada" + (nota ? " · " + nota : "");
-    return '<div class="ag' + est + '"><div class="hr">' + b.h + '</div><div class="q"><b>' + esc(n) + '</b>' + (nota ? '<small>' + esc(nota) + '</small>' : "") + '</div></div>';
+  var C0 = (C[hoy] || {}).items || [], ya = [], vista = [], resto = [];
+  D.agenda.bloques.forEach(function (b) {
+    var ini = minutos(b.h), fin = minutos(b.f);
+    if (ahora >= fin) ya.push(filaAg(b, d, tarea, C0, " ya"));
+    else if (vista.length < 4) vista.push(filaAg(b, d, tarea, C0, ahora >= ini ? " ahora" : ""));
+    else resto.push(filaAg(b, d, tarea, C0, ""));
+  });
+  var sig = vista.length ? "" : '<div class="sub">El día terminó. A dormir.</div>';
+  return '<div class="card" id="card-agenda"><div class="sub">Tu día · hora de Raleigh</div><h2>Agenda</h2>' +
+    (ya.length ? '<details class="plan" style="margin-top:0;border-top:0;padding-top:0"><summary>' + ya.length + ' bloques ya pasaron</summary>' + ya.join("") + '</details>' : "") +
+    vista.join("") + sig +
+    (resto.length ? '<details class="plan"><summary>Resto del día (' + resto.length + ')</summary>' + resto.join("") + '</details>' : "") + '</div>';
+}
+var tFin = 0, tInt = null;
+function mananaHtml(hoy) {
+  var M = D.agenda.manana, p = P[hoy] || {}, m = p.manana || [], n = m.filter(Boolean).length, temprano = minutos(horaLocal()) < minutos("08:30");
+  var pasos = M.pasos.map(function (x, i) {
+    return '<label class="sos' + (m[i] ? " hecho" : "") + '"><input type="checkbox" data-man="' + i + '"' + (m[i] ? " checked" : "") + '><span>' + esc(x.n) + '<small>' + esc(x.d) + '</small><small class="fu">' + esc(x.fuente) + '</small></span></label>';
   }).join("");
-  return '<div class="card" id="card-agenda"><div class="sub">Tu día · hora de Raleigh</div><h2>Agenda</h2>' + filas + '</div>';
+  var cuerpo = '<div class="timer"><b id="t-reloj">' + M.min + ':00</b><button id="b-timer">' + (tFin ? "Detener" : "Empezar " + M.min + " min") + '</button></div>' + pasos +
+    '<div class="sub" style="margin-top:8px">' + esc(M.regla) + '. ' + esc(M.alarma) + '.</div>';
+  var tit = M.titulo + ' · ' + n + ' de ' + M.pasos.length;
+  if (temprano || tFin) return '<div class="card" id="card-manana"><div class="sub">Al despertar, antes del desayuno</div><h2>' + esc(tit) + '</h2>' + cuerpo + '</div>';
+  return '<div class="card" id="card-manana"><details class="plan" style="margin-top:0;border-top:0;padding-top:0"><summary>' + esc(tit) + '</summary>' + cuerpo + '</details></div>';
+}
+function tic() {
+  var el = $("#t-reloj"); if (!el) return;
+  var r = Math.max(0, Math.round((tFin - Date.now()) / 1000));
+  el.textContent = Math.floor(r / 60) + ":" + ("0" + r % 60).slice(-2);
+  if (r === 0) { clearInterval(tInt); tInt = null; tFin = 0; if (navigator.vibrate) navigator.vibrate([400, 200, 400]); aviso("Terminó la activación. A desayunar", true); var b = $("#b-timer"); if (b) b.textContent = "Empezar " + D.agenda.manana.min + " min"; }
 }
 
 // ---------------------------------------------------------------- Hoy
@@ -262,7 +297,7 @@ function cabecera(hoy) {
 function render() {
   var hoy = hoyISO(), sel = SEL || hoy;
   cabecera(hoy);
-  $("#v-hoy").innerHTML = sosiHtml(hoy) + agendaHtml(hoy) + semanaHtml(hoy, sel) + sesionHtml(sel, hoy) + comidasHtml(hoy) + suenoHtml(hoy) + guiaHtml();
+  $("#v-hoy").innerHTML = sosiHtml(hoy) + mananaHtml(hoy) + agendaHtml(hoy) + semanaHtml(hoy, sel) + sesionHtml(sel, hoy) + comidasHtml(hoy) + suenoHtml(hoy) + guiaHtml();
   enlazar(sel);
   renderAvance(hoy);
 }
@@ -387,6 +422,21 @@ function enlazar(sel) {
       doc.sosi[+c.dataset.sosi].hecho = c.checked; doc.actualizado = new Date().toISOString();
       guardar("plan/" + hoy, doc, c.checked ? "Hecho" : "Reabierto");
       var el = $("#card-sosi"); if (el) { el.outerHTML = sosiHtml(hoy); enlazar(sel); }
+    };
+  });
+  var bt = $("#b-timer");
+  if (bt) bt.onclick = function () {
+    if (tFin) { tFin = 0; clearInterval(tInt); tInt = null; bt.textContent = "Empezar " + D.agenda.manana.min + " min"; $("#t-reloj").textContent = D.agenda.manana.min + ":00"; return; }
+    tFin = Date.now() + D.agenda.manana.min * 60000; bt.textContent = "Detener"; tic(); tInt = setInterval(tic, 1000);
+  };
+  document.querySelectorAll("[data-man]").forEach(function (c) {
+    c.onchange = function () {
+      var hoy = hoyISO(), doc = P[hoy] || (P[hoy] = {fecha: hoy});
+      doc.manana = doc.manana || []; doc.manana[+c.dataset.man] = c.checked; doc.actualizado = new Date().toISOString();
+      c.closest(".sos").classList.toggle("hecho", c.checked);
+      var h = $("#card-manana h2, #card-manana summary"), M = D.agenda.manana;
+      if (h) h.textContent = M.titulo + " · " + doc.manana.filter(Boolean).length + " de " + M.pasos.length;
+      guardar("plan/" + hoy, doc, c.checked ? "Hecho" : "Reabierto");
     };
   });
   var be = $("#b-entreno");
