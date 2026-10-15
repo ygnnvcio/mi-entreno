@@ -247,6 +247,7 @@ function filaAg(b, d, tarea, C0, est) {
 }
 // Lo que importa ahora queda a la vista (el bloque actual y los 3 que siguen); lo pasado y el resto del día van plegados.
 function agendaHtml(hoy) {
+  if (!D.agenda) return "";
   var d = diaDe(hoy), p = P[hoy] || {}, ahora = minutos(horaLocal()), tarea = p.bloques || {};
   var C0 = (C[hoy] || {}).items || [], ya = [], vista = [], resto = [];
   D.agenda.bloques.forEach(function (b) {
@@ -263,6 +264,7 @@ function agendaHtml(hoy) {
 }
 var tFin = 0, tInt = null;
 function mananaHtml(hoy) {
+  if (!D.agenda || !D.agenda.manana) return "";
   var M = D.agenda.manana, p = P[hoy] || {}, m = p.manana || [], n = m.filter(Boolean).length, temprano = minutos(horaLocal()) < minutos("08:30");
   var pasos = M.pasos.map(function (x, i) {
     return '<label class="sos' + (m[i] ? " hecho" : "") + '"><input type="checkbox" data-man="' + i + '"' + (m[i] ? " checked" : "") + '><span>' + esc(x.n) + '<small>' + esc(x.d) + '</small><small class="fu">' + esc(x.fuente) + '</small></span></label>';
@@ -515,7 +517,7 @@ function arrancar() {
   if (!K) { $("#fecha").textContent = ""; $("#v-hoy").innerHTML = '<div class="card">Abre el enlace con tu llave.</div>'; return; }
   var cache = null;
   try { cache = JSON.parse(localStorage.getItem("mientreno.d") || "null"); } catch (e) { cache = null; }
-  if (cache && cache.app && cache.app.agenda) cargar(cache); // se ve al instante; abajo se actualiza
+  try { if (cache && cache.app) cargar(cache); } catch (e) { D = null; } // se ve al instante; una copia vieja nunca frena la descarga de abajo
   fetch(API + "?api=datos&k=" + encodeURIComponent(K)).then(function (r) { return r.json(); }).then(function (j) {
     if (!j.ok) throw new Error(j.error);
     cargar(j.datos); cachear();
