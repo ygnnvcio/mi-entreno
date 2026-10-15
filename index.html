@@ -152,20 +152,30 @@ nav button.on{color:var(--acc)}
 .toast.ok{background:var(--acc);color:var(--acc-ink)}
 .cargando{color:var(--mut);padding:28px 0;text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
-.ag{display:flex;gap:12px;padding:9px 0;border-top:1px solid rgba(128,128,128,.18)}
-.ag:first-of-type{border-top:0}
-.ag .hr{flex:none;width:46px;font:700 18px/1.2 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;color:var(--acc)}
-.ag .q{flex:1;min-width:0}.ag .q b{display:block;font-weight:600}.ag .q small{display:block;opacity:.7}
-.ag.ya{opacity:.45}.ag.ahora{background:rgba(128,128,128,.14);border-radius:10px;padding:9px 8px;margin:0 -8px}
-.ag.ahora .hr::after{content:" ahora";font:600 11px/1 sans-serif;text-transform:uppercase}
+.foco{font-size:15px;line-height:1.45;margin:4px 0 6px}.foco span{color:var(--mut)}
+.tls{position:relative}
+.tl{display:grid;grid-template-columns:50px 18px 1fr 34px;align-items:start;gap:0 8px;padding:8px 0;position:relative}
+.tl-h{font:700 17px/1.1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums}.tl-h small{display:block;font:500 11px/1.3 sans-serif;color:var(--mut)}
+.tl-p{width:14px;height:14px;border-radius:50%;margin-top:3px;background:var(--c);box-shadow:0 0 0 3px var(--card,#fff);z-index:1}
+.tl::before{content:"";position:absolute;left:64px;top:0;bottom:0;width:2px;background:var(--line)}
+.tl-q b{display:block;font-weight:600;line-height:1.25}.tl-q small{display:block;color:var(--mut);font-size:12.5px;margin-top:2px}
+.tl-c{width:26px;height:26px;padding:0;margin:0;border-radius:50%;background:transparent;border:2px solid var(--c);justify-self:end}
+.tl.listo .tl-c{background:var(--c)}.tl.listo .tl-c::after{content:"";display:block;width:10px;height:5px;margin:7px auto 0;border-left:2.5px solid #fff;border-bottom:2.5px solid #fff;transform:rotate(-45deg)}
+.tl.listo .tl-q,.tl.ya .tl-q,.tl.ya .tl-h{opacity:.5}.tl.listo .tl-q b{text-decoration:line-through}
+.tl.ahora{background:var(--acc2);border-radius:12px}.tl.ahora .tl-p{width:16px;height:16px;margin-top:2px}
+.t-cuerpo{--c:#e8833a}.t-comida{--c:#c9a227}.t-plata{--c:#3b82f6}.t-gym{--c:var(--acc)}.t-bloque{--c:#7c5cff}.t-pausa{--c:#9aa0a6}.t-dante{--c:#e05a8a}.t-cierre{--c:#64748b}
+.run{border:2px solid var(--acc)}.run-top{display:flex;justify-content:space-between;align-items:baseline;color:var(--mut);font-size:13px;font-weight:600}
+.run-top b{font:700 22px/1 "Barlow Condensed",sans-serif;color:var(--acc);font-variant-numeric:tabular-nums}
+.run .barra{margin:10px 0 14px}.run-n{font-size:28px;line-height:1.1;margin:0}.run-d{font-size:16px;margin-top:8px;line-height:1.4}
+.run-seg{font:700 56px/1 "Barlow Condensed",sans-serif;text-align:center;margin:16px 0 0;font-variant-numeric:tabular-nums}.run-seg.ok{color:var(--acc)}
+.run-pie{display:flex;gap:10px}.run-pie .sec{flex:1;background:transparent;color:var(--mut);border:1px solid var(--line);margin-top:10px;padding:10px}
+.run-sig{margin-top:12px;text-align:center}
 .sos{display:flex;gap:10px;align-items:flex-start;padding:8px 0}.sos input{margin-top:4px}
 .sos.hecho span{text-decoration:line-through;opacity:.55}.sos small{display:block;opacity:.7}
 details.plan summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px}
 details.plan summary::-webkit-details-marker{display:none}
 details.plan summary::after{content:"";flex:none;width:8px;height:8px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg);transition:transform .2s;margin-right:4px}
 details.plan[open] summary::after{transform:rotate(-135deg)}
-.timer{display:flex;align-items:center;gap:12px;margin-top:12px}.timer b{font:700 34px/1 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;min-width:86px}
-.timer button{margin-top:0}
 .sos .fu{font-size:11.5px;opacity:.55}
 </style>
 </head>
@@ -232,6 +242,7 @@ function anterior(ej, antesDe) {
 // ---------------------------------------------------------------- Agenda
 var P = {};   // plan del día por fecha: {sosi: [{t, para, hecho}], bloques: {"10:15": "tarea"}}
 function minutos(h) { var p = h.split(":"); return +p[0] * 60 + +p[1]; }
+function enMin(m) { return m < 60 ? m + " min" : Math.floor(m / 60) + "h" + (m % 60 ? ("0" + m % 60).slice(-2) : ""); }
 function sosiHtml(hoy) {
   var p = P[hoy] || {}, xs = p.sosi || [];
   var cuerpo = xs.length ? xs.map(function (x, i) {
@@ -239,47 +250,81 @@ function sosiHtml(hoy) {
   }).join("") : '<div class="sub">Todavía no hay sí o sí para hoy. El Cierre de anoche los deja aquí (máximo 3).</div>';
   return '<div class="card" id="card-sosi"><div class="sub">Sí o sí de hoy · van antes que todo</div><h2>' + (xs.length ? xs.filter(function (x) { return x.hecho; }).length + " de " + xs.length + " hechos" : "Sin lista") + '</h2>' + cuerpo + '</div>';
 }
-function filaAg(b, d, tarea, C0, est) {
-  var n = b.n, nota = tarea[b.h] || b.nota || "";
-  if (b.t === "gym") { n = d.tipo === "libre" ? "Día libre, sin gym" : "Gym: " + d.n; nota = d.tipo === "libre" ? "Descanso total" : (nota || ""); }
-  if (b.t === "comida" && C0.some(function (x) { return x.slot === b.slot; })) nota = "Registrada" + (nota ? " · " + nota : "");
-  return '<div class="ag' + est + '"><div class="hr">' + b.h + '</div><div class="q"><b>' + esc(n) + '</b>' + (nota ? '<small>' + esc(nota) + '</small>' : "") + '</div></div>';
+
+// Agenda como línea del día (comportamiento visto en Structured): punto de color por tipo sobre una línea,
+// hora y duración, y un círculo a la derecha que se toca para dar el bloque por hecho.
+function filaAg(b, d, p, C0, ahora) {
+  var ini = minutos(b.h), fin = minutos(b.f), n = b.n, nota = (p.bloques || {})[b.h] || b.nota || "";
+  if (b.t === "gym") { n = d.tipo === "libre" ? "Día libre, sin gym" : "Gym: " + d.n; nota = d.tipo === "libre" ? "Descanso total" : nota; }
+  var hecho = !!(p.hechos || {})[b.h] || (b.t === "comida" && C0.some(function (x) { return x.slot === b.slot; }));
+  var est = hecho ? " listo" : ahora >= fin ? " ya" : ahora >= ini ? " ahora" : "";
+  return '<div class="tl t-' + b.t + est + '"><div class="tl-h">' + b.h + '<small>' + enMin(fin - ini) + '</small></div><i class="tl-p"></i>' +
+    '<div class="tl-q"><b>' + esc(n) + '</b>' + (nota ? '<small>' + esc(nota) + '</small>' : "") + '</div>' +
+    '<button class="tl-c" data-blk="' + b.h + '" aria-pressed="' + hecho + '" aria-label="Marcar ' + esc(n) + ' como hecho"></button></div>';
 }
-// Lo que importa ahora queda a la vista (el bloque actual y los 3 que siguen); lo pasado y el resto del día van plegados.
 function agendaHtml(hoy) {
   if (!D.agenda) return "";
-  var d = diaDe(hoy), p = P[hoy] || {}, ahora = minutos(horaLocal()), tarea = p.bloques || {};
-  var C0 = (C[hoy] || {}).items || [], ya = [], vista = [], resto = [];
+  var d = diaDe(hoy), p = P[hoy] || {}, ahora = minutos(horaLocal()), C0 = (C[hoy] || {}).items || [];
+  var ya = [], vista = [], resto = [], act = null, sig = null;
   D.agenda.bloques.forEach(function (b) {
-    var ini = minutos(b.h), fin = minutos(b.f);
-    if (ahora >= fin) ya.push(filaAg(b, d, tarea, C0, " ya"));
-    else if (vista.length < 4) vista.push(filaAg(b, d, tarea, C0, ahora >= ini ? " ahora" : ""));
-    else resto.push(filaAg(b, d, tarea, C0, ""));
+    var ini = minutos(b.h), fin = minutos(b.f), f = filaAg(b, d, p, C0, ahora);
+    if (ahora >= ini && ahora < fin) act = b; else if (!sig && ini > ahora) sig = b;
+    if (ahora >= fin) ya.push(f); else if (vista.length < 4) vista.push(f); else resto.push(f);
   });
-  var sig = vista.length ? "" : '<div class="sub">El día terminó. A dormir.</div>';
-  return '<div class="card" id="card-agenda"><div class="sub">Tu día · hora de Raleigh</div><h2>Agenda</h2>' +
-    (ya.length ? '<details class="plan" style="margin-top:0;border-top:0;padding-top:0"><summary>' + ya.length + ' bloques ya pasaron</summary>' + ya.join("") + '</details>' : "") +
-    vista.join("") + sig +
-    (resto.length ? '<details class="plan"><summary>Resto del día (' + resto.length + ')</summary>' + resto.join("") + '</details>' : "") + '</div>';
+  // Lo que muestra el widget de Structured: qué toca ahora y en cuánto empieza lo siguiente.
+  var foco = act ? '<b>Ahora: ' + esc(act.n) + '</b> · quedan ' + enMin(minutos(act.f) - ahora) : '<b>Libre ahora</b>';
+  if (sig) foco += '<br><span>Sigue ' + esc(sig.n) + ' en ' + enMin(minutos(sig.h) - ahora) + '</span>';
+  return '<div class="card" id="card-agenda"><div class="sub">Tu día · hora de Raleigh</div><div class="foco">' + foco + '</div>' +
+    (ya.length ? '<details class="plan"><summary>' + ya.length + ' bloques antes de ahora</summary><div class="tls">' + ya.join("") + '</div></details>' : "") +
+    '<div class="tls">' + (vista.join("") || '<div class="sub">El día terminó. A dormir.</div>') + '</div>' +
+    (resto.length ? '<details class="plan"><summary>Resto del día (' + resto.length + ')</summary><div class="tls">' + resto.join("") + '</div></details>' : "") + '</div>';
 }
-var tFin = 0, tInt = null;
+
+// Rutina de mañana como rutina de Hevy: tarjeta con resumen y un botón Empezar; al empezar, un paso a la vez
+// a pantalla de tarjeta, con reloj grande, "Hecho" que avanza solo y el paso siguiente a la vista.
+var RUN = null, tInt = null;   // {i, fin}: paso actual y fin del tope de 15 min
+function mananaDoc(hoy) { var doc = P[hoy] || (P[hoy] = {fecha: hoy}); doc.manana = doc.manana || []; return doc; }
 function mananaHtml(hoy) {
   if (!D.agenda || !D.agenda.manana) return "";
-  var M = D.agenda.manana, p = P[hoy] || {}, m = p.manana || [], n = m.filter(Boolean).length, temprano = minutos(horaLocal()) < minutos("08:30");
-  var pasos = M.pasos.map(function (x, i) {
-    return '<label class="sos' + (m[i] ? " hecho" : "") + '"><input type="checkbox" data-man="' + i + '"' + (m[i] ? " checked" : "") + '><span>' + esc(x.n) + '<small>' + esc(x.d) + '</small><small class="fu">' + esc(x.fuente) + '</small></span></label>';
-  }).join("");
-  var cuerpo = '<div class="timer"><b id="t-reloj">' + M.min + ':00</b><button id="b-timer">' + (tFin ? "Detener" : "Empezar " + M.min + " min") + '</button></div>' + pasos +
-    '<div class="sub" style="margin-top:8px">' + esc(M.regla) + '. ' + esc(M.alarma) + '.</div>';
-  var tit = M.titulo + ' · ' + n + ' de ' + M.pasos.length;
-  if (temprano || tFin) return '<div class="card" id="card-manana"><div class="sub">Al despertar, antes del desayuno</div><h2>' + esc(tit) + '</h2>' + cuerpo + '</div>';
-  return '<div class="card" id="card-manana"><details class="plan" style="margin-top:0;border-top:0;padding-top:0"><summary>' + esc(tit) + '</summary>' + cuerpo + '</details></div>';
+  var M = D.agenda.manana, m = (P[hoy] || {}).manana || [], n = m.filter(Boolean).length, N = M.pasos.length;
+  if (RUN) {
+    var x = M.pasos[RUN.i], prox = M.pasos[RUN.i + 1];
+    return '<div class="card run" id="card-manana"><div class="run-top"><span>Paso ' + (RUN.i + 1) + ' de ' + N + '</span><b id="t-reloj">--:--</b></div>' +
+      '<div class="barra"><i style="width:' + Math.round(100 * RUN.i / N) + '%"></i></div>' +
+      '<h2 class="run-n">' + esc(x.n) + '</h2><div class="run-d">' + esc(x.d) + '</div>' +
+      (x.seg ? '<div class="run-seg" id="t-paso">' + Math.floor(x.seg / 60) + ':' + ("0" + x.seg % 60).slice(-2) + '</div>' : "") +
+      '<button id="b-hecho">' + (prox ? "Hecho, siguiente" : "Hecho, terminar") + '</button>' +
+      '<div class="run-pie"><button class="sec" id="b-saltar">Saltar</button><button class="sec" id="b-parar">Parar</button></div>' +
+      (prox ? '<div class="sub run-sig">Sigue: ' + esc(prox.n) + '</div>' : "") + '</div>';
+  }
+  var temprano = minutos(horaLocal()) < minutos("08:30");
+  var resumen = '<div class="sub">' + esc(M.pasos.map(function (x) { return x.n; }).join(" · ")) + '</div>';
+  var cuerpo = resumen + '<button id="b-empezar">' + (n === N ? "Hecha. Repetir" : n ? "Seguir (" + n + " de " + N + ")" : "Empezar " + M.min + " min") + '</button>' +
+    '<details class="plan"><summary>Detalle y fuentes</summary><ol class="plan-l">' + M.pasos.map(function (x, i) {
+      return '<li>' + (m[i] ? "<s>" : "") + '<b>' + esc(x.n) + '</b>: ' + esc(x.d) + (m[i] ? "</s>" : "") + '<br><small class="sub">' + esc(x.fuente) + '</small></li>';
+    }).join("") + '</ol><div class="sub">' + esc(M.regla) + '. ' + esc(M.alarma) + '.</div></details>';
+  var tit = esc(M.titulo) + ' <span class="sub">· ' + n + ' de ' + N + '</span>';
+  if (temprano) return '<div class="card" id="card-manana"><div class="sub">Al despertar, antes del desayuno</div><h2>' + tit + '</h2>' + cuerpo + '</div>';
+  return '<div class="card" id="card-manana"><details class="plan" style="margin-top:0;border-top:0;padding-top:0"><summary>' + tit + '</summary>' + cuerpo + '</details></div>';
 }
+function reloj(ms) { var r = Math.max(0, Math.round(ms / 1000)); return Math.floor(r / 60) + ":" + ("0" + r % 60).slice(-2); }
 function tic() {
-  var el = $("#t-reloj"); if (!el) return;
-  var r = Math.max(0, Math.round((tFin - Date.now()) / 1000));
-  el.textContent = Math.floor(r / 60) + ":" + ("0" + r % 60).slice(-2);
-  if (r === 0) { clearInterval(tInt); tInt = null; tFin = 0; if (navigator.vibrate) navigator.vibrate([400, 200, 400]); aviso("Terminó la activación. A desayunar", true); var b = $("#b-timer"); if (b) b.textContent = "Empezar " + D.agenda.manana.min + " min"; }
+  if (!RUN) return;
+  var el = $("#t-reloj"), ahora = Date.now();
+  if (el) el.textContent = reloj(RUN.fin - ahora);
+  var ps = $("#t-paso");
+  if (ps && RUN.finPaso) { ps.textContent = reloj(RUN.finPaso - ahora); if (ahora >= RUN.finPaso && !RUN.avisado) { RUN.avisado = true; ps.classList.add("ok"); if (navigator.vibrate) navigator.vibrate(300); } }
+  if (ahora >= RUN.fin) { terminarRun("Se acabaron los 15 min. A desayunar"); }
+}
+function pasoActual() { var x = D.agenda.manana.pasos[RUN.i]; RUN.finPaso = x.seg ? Date.now() + x.seg * 1000 : 0; RUN.avisado = false; }
+function terminarRun(msg) { clearInterval(tInt); tInt = null; RUN = null; if (navigator.vibrate) navigator.vibrate([300, 150, 300]); aviso(msg, true); pintarManana(); }
+function pintarManana() { var el = $("#card-manana"); if (el) { el.outerHTML = mananaHtml(hoyISO()); enlazar(SEL || hoyISO()); tic(); } }
+function avanzar(marcar) {
+  var hoy = hoyISO(), doc = mananaDoc(hoy), N = D.agenda.manana.pasos.length;
+  if (marcar) { doc.manana[RUN.i] = true; doc.actualizado = new Date().toISOString(); guardar("plan/" + hoy, doc, "Hecho"); }
+  var i = RUN.i + 1; while (i < N && doc.manana[i]) i++;
+  if (i >= N) { terminarRun(doc.manana.filter(Boolean).length === N ? "Cuerpo activado" : "Terminado"); return; }
+  RUN.i = i; pasoActual(); pintarManana();
 }
 
 // ---------------------------------------------------------------- Hoy
@@ -426,19 +471,24 @@ function enlazar(sel) {
       var el = $("#card-sosi"); if (el) { el.outerHTML = sosiHtml(hoy); enlazar(sel); }
     };
   });
-  var bt = $("#b-timer");
-  if (bt) bt.onclick = function () {
-    if (tFin) { tFin = 0; clearInterval(tInt); tInt = null; bt.textContent = "Empezar " + D.agenda.manana.min + " min"; $("#t-reloj").textContent = D.agenda.manana.min + ":00"; return; }
-    tFin = Date.now() + D.agenda.manana.min * 60000; bt.textContent = "Detener"; tic(); tInt = setInterval(tic, 1000);
+  var bm = $("#b-empezar");
+  if (bm) bm.onclick = function () {
+    var doc = mananaDoc(hoyISO()), N = D.agenda.manana.pasos.length;
+    if (doc.manana.filter(Boolean).length === N) doc.manana = [];
+    var i = 0; while (i < N && doc.manana[i]) i++;
+    RUN = {i: i, fin: Date.now() + D.agenda.manana.min * 60000}; pasoActual();
+    clearInterval(tInt); tInt = setInterval(tic, 1000); pintarManana();
+    var c = $("#card-manana"); if (c) c.scrollIntoView({behavior: "smooth", block: "start"});
   };
-  document.querySelectorAll("[data-man]").forEach(function (c) {
-    c.onchange = function () {
-      var hoy = hoyISO(), doc = P[hoy] || (P[hoy] = {fecha: hoy});
-      doc.manana = doc.manana || []; doc.manana[+c.dataset.man] = c.checked; doc.actualizado = new Date().toISOString();
-      c.closest(".sos").classList.toggle("hecho", c.checked);
-      var h = $("#card-manana h2, #card-manana summary"), M = D.agenda.manana;
-      if (h) h.textContent = M.titulo + " · " + doc.manana.filter(Boolean).length + " de " + M.pasos.length;
-      guardar("plan/" + hoy, doc, c.checked ? "Hecho" : "Reabierto");
+  var bh = $("#b-hecho"); if (bh) bh.onclick = function () { avanzar(true); };
+  var bs = $("#b-saltar"); if (bs) bs.onclick = function () { avanzar(false); };
+  var bp = $("#b-parar"); if (bp) bp.onclick = function () { clearInterval(tInt); tInt = null; RUN = null; pintarManana(); };
+  document.querySelectorAll("[data-blk]").forEach(function (b) {
+    b.onclick = function () {
+      var hoy = hoyISO(), doc = P[hoy] || (P[hoy] = {fecha: hoy}), h = b.dataset.blk;
+      doc.hechos = doc.hechos || {}; doc.hechos[h] = !doc.hechos[h]; doc.actualizado = new Date().toISOString();
+      var el = $("#card-agenda"); if (el) { el.outerHTML = agendaHtml(hoy); enlazar(sel); }
+      guardar("plan/" + hoy, doc, doc.hechos[h] ? "Bloque hecho" : "Reabierto");
     };
   });
   var be = $("#b-entreno");
