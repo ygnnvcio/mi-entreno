@@ -152,6 +152,14 @@ nav button.on{color:var(--acc)}
 .toast.ok{background:var(--acc);color:var(--acc-ink)}
 .cargando{color:var(--mut);padding:28px 0;text-align:center}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.ag{display:flex;gap:12px;padding:9px 0;border-top:1px solid rgba(128,128,128,.18)}
+.ag:first-of-type{border-top:0}
+.ag .hr{flex:none;width:46px;font:700 18px/1.2 "Barlow Condensed",sans-serif;font-variant-numeric:tabular-nums;color:var(--acc)}
+.ag .q{flex:1;min-width:0}.ag .q b{display:block;font-weight:600}.ag .q small{display:block;opacity:.7}
+.ag.ya{opacity:.45}.ag.ahora{background:rgba(128,128,128,.14);border-radius:10px;padding:9px 8px;margin:0 -8px}
+.ag.ahora .hr::after{content:" ahora";font:600 11px/1 sans-serif;text-transform:uppercase}
+.sos{display:flex;gap:10px;align-items:flex-start;padding:8px 0}.sos input{margin-top:4px}
+.sos.hecho span{text-decoration:line-through;opacity:.55}.sos small{display:block;opacity:.7}
 </style>
 </head>
 <body>
@@ -213,6 +221,30 @@ function anterior(ej, antesDe) {
   return null;
 }
 
+
+// ---------------------------------------------------------------- Agenda
+var P = {};   // plan del día por fecha: {sosi: [{t, para, hecho}], bloques: {"10:15": "tarea"}}
+function minutos(h) { var p = h.split(":"); return +p[0] * 60 + +p[1]; }
+function sosiHtml(hoy) {
+  var p = P[hoy] || {}, xs = p.sosi || [];
+  var cuerpo = xs.length ? xs.map(function (x, i) {
+    return '<label class="sos' + (x.hecho ? " hecho" : "") + '"><input type="checkbox" data-sosi="' + i + '"' + (x.hecho ? " checked" : "") + '><span>' + esc(x.t) + (x.para ? '<small>' + esc(x.para) + '</small>' : "") + '</span></label>';
+  }).join("") : '<div class="sub">Todavía no hay sí o sí para hoy. El Cierre de anoche los deja aquí (máximo 3).</div>';
+  return '<div class="card" id="card-sosi"><div class="sub">Sí o sí de hoy · van antes que todo</div><h2>' + (xs.length ? xs.filter(function (x) { return x.hecho; }).length + " de " + xs.length + " hechos" : "Sin lista") + '</h2>' + cuerpo + '</div>';
+}
+function agendaHtml(hoy) {
+  var d = diaDe(hoy), p = P[hoy] || {}, ahora = minutos(horaLocal()), tarea = p.bloques || {};
+  var C0 = (C[hoy] || {}).items || [];
+  var filas = D.agenda.bloques.map(function (b) {
+    var ini = minutos(b.h), fin = minutos(b.f), est = ahora >= fin ? " ya" : (ahora >= ini ? " ahora" : "");
+    var n = b.n, nota = tarea[b.h] || b.nota || "";
+    if (b.t === "gym") { n = d.tipo === "libre" ? "Día libre, sin gym" : "Gym: " + d.n; nota = d.tipo === "libre" ? "Descanso total" : (nota || ""); }
+    if (b.t === "comida" && C0.some(function (x) { return x.slot === b.slot; })) nota = "Registrada" + (nota ? " · " + nota : "");
+    return '<div class="ag' + est + '"><div class="hr">' + b.h + '</div><div class="q"><b>' + esc(n) + '</b>' + (nota ? '<small>' + esc(nota) + '</small>' : "") + '</div></div>';
+  }).join("");
+  return '<div class="card" id="card-agenda"><div class="sub">Tu día · hora de Raleigh</div><h2>Agenda</h2>' + filas + '</div>';
+}
+
 // ---------------------------------------------------------------- Hoy
 function cabecera(hoy) {
   var d = diaDe(hoy);
@@ -230,7 +262,7 @@ function cabecera(hoy) {
 function render() {
   var hoy = hoyISO(), sel = SEL || hoy;
   cabecera(hoy);
-  $("#v-hoy").innerHTML = semanaHtml(hoy, sel) + sesionHtml(sel, hoy) + comidasHtml(hoy) + suenoHtml(hoy) + guiaHtml();
+  $("#v-hoy").innerHTML = sosiHtml(hoy) + agendaHtml(hoy) + semanaHtml(hoy, sel) + sesionHtml(sel, hoy) + comidasHtml(hoy) + suenoHtml(hoy) + guiaHtml();
   enlazar(sel);
   renderAvance(hoy);
 }
@@ -334,7 +366,7 @@ function guiaHtml() {
 }
 
 // ---------------------------------------------------------------- Guardar
-function cachear() { try { localStorage.setItem("mientreno.d", JSON.stringify({app: D, entrenos: E, comidas: C, sueno: Z})); } catch (e) { /* sin caché */ } }
+function cachear() { try { localStorage.setItem("mientreno.d", JSON.stringify({app: D, entrenos: E, comidas: C, sueno: Z, plan: P})); } catch (e) { /* sin caché */ } }
 // Guardado instantáneo: se ve al tiro y se sube por detrás (texto plano: sin permiso previo del navegador).
 function guardar(ruta, doc, msg) {
   var p = ruta.split("/");
@@ -349,6 +381,14 @@ function guardar(ruta, doc, msg) {
 function enlazar(sel) {
   document.querySelectorAll(".semana7 button").forEach(function (b) { b.onclick = function () { SEL = b.dataset.f; render(); }; });
   document.querySelectorAll('.ej input[data-k="hecho"]').forEach(function (c) { c.onchange = function () { c.closest(".ej").classList.toggle("hecho", c.checked); }; });
+  document.querySelectorAll("[data-sosi]").forEach(function (c) {
+    c.onchange = function () {
+      var hoy = hoyISO(), doc = P[hoy]; if (!doc || !doc.sosi) return;
+      doc.sosi[+c.dataset.sosi].hecho = c.checked; doc.actualizado = new Date().toISOString();
+      guardar("plan/" + hoy, doc, c.checked ? "Hecho" : "Reabierto");
+      var el = $("#card-sosi"); if (el) { el.outerHTML = sosiHtml(hoy); enlazar(sel); }
+    };
+  });
   var be = $("#b-entreno");
   if (be) be.onclick = function () {
     var d = diaDe(sel);
@@ -420,12 +460,12 @@ document.querySelectorAll("nav button").forEach(function (b) {
   };
 });
 
-function cargar(d) { D = d.app; E = d.entrenos || {}; C = d.comidas || {}; Z = d.sueno || {}; render(); }
+function cargar(d) { D = d.app; E = d.entrenos || {}; C = d.comidas || {}; Z = d.sueno || {}; P = d.plan || {}; render(); }
 function arrancar() {
   if (!K) { $("#fecha").textContent = ""; $("#v-hoy").innerHTML = '<div class="card">Abre el enlace con tu llave.</div>'; return; }
   var cache = null;
   try { cache = JSON.parse(localStorage.getItem("mientreno.d") || "null"); } catch (e) { cache = null; }
-  if (cache && cache.app) cargar(cache); // se ve al instante; abajo se actualiza
+  if (cache && cache.app && cache.app.agenda) cargar(cache); // se ve al instante; abajo se actualiza
   fetch(API + "?api=datos&k=" + encodeURIComponent(K)).then(function (r) { return r.json(); }).then(function (j) {
     if (!j.ok) throw new Error(j.error);
     cargar(j.datos); cachear();
