@@ -177,6 +177,20 @@ details.plan summary::-webkit-details-marker{display:none}
 details.plan summary::after{content:"";flex:none;width:8px;height:8px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg);transition:transform .2s;margin-right:4px}
 details.plan[open] summary::after{transform:rotate(-135deg)}
 .sos .fu{font-size:11.5px;opacity:.55}
+details.card.pl>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;gap:10px;font-weight:700;font-size:17px;cursor:pointer}
+details.card.pl>summary::-webkit-details-marker{display:none}
+details.card.pl>summary::after{content:"";flex:none;width:8px;height:8px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg);transition:transform .2s;margin-right:4px}
+details.card.pl[open]>summary::after{transform:rotate(-135deg)}
+details.card.pl>summary .sub{font-weight:500;font-size:14px}
+.pl-in>.card{border:0;box-shadow:none;padding:0;margin:12px 0 0;background:none}
+.ej>*:not(.num){grid-column:2}
+.ej-h{all:unset;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:10px;grid-column:2}
+.ej-h .chip{flex:none}
+.ej .clave,.ej .antes,.ej .fila,.ej label.chk{display:none}
+.ej.abierto .clave,.ej.abierto .antes{display:block}.ej.abierto .fila,.ej.abierto label.chk{display:flex}
+.ej.abierto{background:var(--acc2);border-radius:12px;padding:14px 10px;margin:0 -10px}
+.ej.hecho .num::after{content:"";display:block;width:10px;height:5px;margin:0 auto;border-left:2.5px solid var(--acc-ink);border-bottom:2.5px solid var(--acc-ink);transform:rotate(-45deg) translateY(-2px)}
+.ej.hecho:not(.abierto) .n{text-decoration:line-through;opacity:.55}
 </style>
 </head>
 <body>
@@ -297,7 +311,7 @@ function mananaHtml(hoy) {
       '<div class="run-pie"><button class="sec" id="b-saltar">Saltar</button><button class="sec" id="b-parar">Parar</button></div>' +
       (prox ? '<div class="sub run-sig">Sigue: ' + esc(prox.n) + '</div>' : "") + '</div>';
   }
-  var temprano = minutos(horaLocal()) < minutos("08:30");
+  var temprano = !!activas(hoy).manana;
   var resumen = '<div class="sub">' + esc(M.pasos.map(function (x) { return x.n; }).join(" · ")) + '</div>';
   var cuerpo = resumen + '<button id="b-empezar">' + (n === N ? "Hecha. Repetir" : n ? "Seguir (" + n + " de " + N + ")" : "Empezar " + M.min + " min") + '</button>' +
     '<details class="plan"><summary>Detalle y fuentes</summary><ol class="plan-l">' + M.pasos.map(function (x, i) {
@@ -305,7 +319,7 @@ function mananaHtml(hoy) {
     }).join("") + '</ol><div class="sub">' + esc(M.regla) + '. ' + esc(M.alarma) + '.</div></details>';
   var tit = esc(M.titulo) + ' <span class="sub">· ' + n + ' de ' + N + '</span>';
   if (temprano) return '<div class="card" id="card-manana"><div class="sub">Al despertar, antes del desayuno</div><h2>' + tit + '</h2>' + cuerpo + '</div>';
-  return '<div class="card" id="card-manana"><details class="plan" style="margin-top:0;border-top:0;padding-top:0"><summary>' + tit + '</summary>' + cuerpo + '</details></div>';
+  return '<div class="card" id="card-manana"><details class="plan" data-card="manana" style="margin-top:0;border-top:0;padding-top:0"><summary>' + tit + '</summary>' + cuerpo + '</details></div>';
 }
 function reloj(ms) { var r = Math.max(0, Math.round(ms / 1000)); return Math.floor(r / 60) + ":" + ("0" + r % 60).slice(-2); }
 function tic() {
@@ -341,10 +355,34 @@ function cabecera(hoy) {
   var pr = protDe(hoy), comidas = C[hoy] && C[hoy].items ? C[hoy].items.length : 0, sz = Z[hoy];
   $("#kpis").innerHTML = '<div><b>' + pr + '</b><span>g proteína</span></div><div><b>' + comidas + '/5</b><span>comidas</span></div><div><b>' + (sz ? sz.horas : "—") + '</b><span>h de sueño</span></div>';
 }
+// Orden de Hoy (Roast Room 2026-10-15, opción C): arriba lo obligatorio y la agenda; se abre sola la tarjeta
+// que pide el bloque actual de la agenda (campo card en agenda.json), el resto va plegado y cada tarjeta cuenta sus aperturas.
+function activas(hoy) {
+  var a = {}, ahora = minutos(horaLocal());
+  ((D.agenda || {}).bloques || []).forEach(function (b) { if (b.card && ahora >= minutos(b.h) && ahora < minutos(b.f)) a[b.card] = true; });
+  if (!Z[hoy] && ahora < minutos("12:00")) a.sueno = true;
+  if (diaDe(hoy).tipo !== "libre" && !(E[hoy] && E[hoy].creado)) a.entreno = true;   // día de gym: arriba hasta guardarlo
+  if (SEL) a.entreno = true;
+  return a;
+}
+var ABIERTO = {};   // lo que abriste o cerraste a mano en esta visita manda sobre la agenda
+function pliegue(k, titulo, html, abierta) {
+  if (k in ABIERTO) abierta = ABIERTO[k];
+  return '<details class="card pl" data-card="' + k + '"' + (abierta ? " open" : "") + '><summary>' + titulo + '</summary><div class="pl-in">' + html + '</div></details>';
+}
 function render() {
-  var hoy = hoyISO(), sel = SEL || hoy;
+  var hoy = hoyISO(), sel = SEL || hoy, A = activas(hoy), d = diaDe(sel);
   cabecera(hoy);
-  $("#v-hoy").innerHTML = sosiHtml(hoy) + mananaHtml(hoy) + agendaHtml(hoy) + semanaHtml(hoy, sel) + sesionHtml(sel, hoy) + comidasHtml(hoy) + suenoHtml(hoy) + guiaHtml();
+  var nC = ((C[hoy] || {}).items || []).length, sz = Z[hoy];
+  var tarjetas = [
+    {k: "manana", html: mananaHtml(hoy)},
+    {k: "entreno", html: pliegue("entreno", 'Entreno <span class="sub">· ' + esc(d.tipo === "libre" ? "día libre" : d.n) + (d.tipo === "libre" ? "" : " · " + ((E[sel] || {}).items || []).filter(function (x) { return x.hecho; }).length + " de " + d.ej.length) + '</span>', semanaHtml(hoy, sel) + sesionHtml(sel, hoy), A.entreno)},
+    {k: "comidas", html: pliegue("comidas", 'Comidas <span class="sub">· ' + nC + ' de 5 · ' + protDe(hoy) + ' g</span>', comidasHtml(hoy), A.comidas)},
+    {k: "sueno", html: pliegue("sueno", 'Sueño <span class="sub">· ' + (sz ? sz.horas + " h" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno)},
+    {k: "guia", html: pliegue("guia", 'Recetas y reglas', guiaHtml(), false)}
+  ];
+  var arriba = tarjetas.filter(function (t) { return A[t.k]; }), abajo = tarjetas.filter(function (t) { return !A[t.k]; });
+  $("#v-hoy").innerHTML = sosiHtml(hoy) + agendaHtml(hoy) + arriba.concat(abajo).map(function (t) { return t.html; }).join("");
   enlazar(sel);
   renderAvance(hoy);
 }
@@ -376,10 +414,11 @@ function sesionHtml(f, hoy) {
   var out = '<div class="card" id="card-entreno"><div class="card-top"><div><div class="sub">' + titulo + '</div><h2>' + esc(d.n) + '</h2></div>' +
     '<span class="badge b-' + d.tipo + '">' + esc(D.rutina.hora) + '</span></div>' +
     '<div class="barra"><i style="width:' + Math.round(hechosN / d.ej.length * 100) + '%"></i></div><div class="sub" style="margin-top:6px">' + hechosN + ' de ' + d.ej.length + ' ejercicios</div><div style="margin-top:8px">';
+  var toca = -1;
+  d.ej.forEach(function (x, i) { if (toca < 0 && !(marcas[x.n] || {}).hecho) toca = i; });
   d.ej.forEach(function (x, i) {
     var p = marcas[x.n] || {}, a = esFuerza(d, x) ? anterior(x.n, f) : null;
-    out += '<div class="ej' + (p.hecho ? " hecho" : "") + '" data-i="' + i + '"><div class="num">' + (i + 1) + '</div><div class="n">' + esc(x.n) + '</div>' +
-      '<div><span class="chip">' + esc(x.sr) + '</span></div>' + (x.nota ? '<div class="clave">' + esc(x.nota) + '</div>' : "") +
+    out += '<div class="ej' + (p.hecho ? " hecho" : "") + (i === toca ? " abierto" : "") + '" data-i="' + i + '"><div class="num">' + (p.hecho ? "" : i + 1) + '</div><button type="button" class="ej-h"><span class="n">' + esc(x.n) + '</span><span class="chip">' + esc(x.sr) + '</span></button>' + (x.nota ? '<div class="clave">' + esc(x.nota) + '</div>' : "") +
       (a ? '<div class="antes">La vez pasada (' + fc(a.f) + '): ' + esc(a.peso ? a.peso + " lb" : "") + (a.reps ? " · " + esc(a.reps) : "") + '</div>' : "");
     if (esFuerza(d, x)) out += '<div class="fila"><input id="peso-' + i + '" class="corto" type="number" inputmode="decimal" placeholder="lb" data-k="peso" value="' + esc(p.peso || "") + '" aria-label="Peso en libras">' +
       '<input id="reps-' + i + '" style="flex:1;width:auto;min-width:0" type="text" inputmode="numeric" placeholder="reps por serie: 8 8 7" data-k="reps" value="' + esc(p.reps || "") + '" aria-label="Repeticiones por serie"></div>';
@@ -450,25 +489,44 @@ function guiaHtml() {
 // ---------------------------------------------------------------- Guardar
 function cachear() { try { localStorage.setItem("mientreno.d", JSON.stringify({app: D, entrenos: E, comidas: C, sueno: Z, plan: P})); } catch (e) { /* sin caché */ } }
 // Guardado instantáneo: se ve al tiro y se sube por detrás (texto plano: sin permiso previo del navegador).
-function guardar(ruta, doc, msg) {
+function guardar(ruta, doc, msg, callado) {
   var p = ruta.split("/");
   cachear();
-  aviso("Guardando…");
+  if (!callado) aviso("Guardando…");
   return fetch(API, {method: "POST", body: JSON.stringify({k: K, fn: "guardar", args: [p[0], p[1], doc]})})
     .then(function (r) { return r.json(); })
-    .then(function (j) { if (!j.ok) throw new Error(j.error); aviso(msg || "Guardado", true); })
+    .then(function (j) { if (!j.ok) throw new Error(j.error); if (!callado) aviso(msg || "Guardado", true); })
     .catch(function (e) { aviso("No se pudo guardar: revisa tu internet e intenta de nuevo"); });
 }
 
 function enlazar(sel) {
   document.querySelectorAll(".semana7 button").forEach(function (b) { b.onclick = function () { SEL = b.dataset.f; render(); }; });
-  document.querySelectorAll('.ej input[data-k="hecho"]').forEach(function (c) { c.onchange = function () { c.closest(".ej").classList.toggle("hecho", c.checked); }; });
+  document.querySelectorAll(".ej-h").forEach(function (b) { b.onclick = function () { b.closest(".ej").classList.toggle("abierto"); }; });
+  document.querySelectorAll('.ej input[data-k="hecho"]').forEach(function (c) {
+    c.onchange = function () {   // como Hevy: marcas hecho, se cierra y se abre el siguiente que falta
+      var ej = c.closest(".ej"); ej.classList.toggle("hecho", c.checked);
+      if (!c.checked) return;
+      ej.classList.remove("abierto");
+      var sig = ej.nextElementSibling; while (sig && sig.classList.contains("hecho")) sig = sig.nextElementSibling;
+      if (sig && sig.classList.contains("ej")) { sig.classList.add("abierto"); sig.scrollIntoView({behavior: "smooth", block: "center"}); }
+    };
+  });
   document.querySelectorAll("[data-sosi]").forEach(function (c) {
     c.onchange = function () {
       var hoy = hoyISO(), doc = P[hoy]; if (!doc || !doc.sosi) return;
       doc.sosi[+c.dataset.sosi].hecho = c.checked; doc.actualizado = new Date().toISOString();
       guardar("plan/" + hoy, doc, c.checked ? "Hecho" : "Reabierto");
       var el = $("#card-sosi"); if (el) { el.outerHTML = sosiHtml(hoy); enlazar(sel); }
+    };
+  });
+  document.querySelectorAll("details[data-card] > summary").forEach(function (sm) {
+    sm.onclick = function () {   // solo toques tuyos: lo que abre la agenda sola no cuenta
+      var dt = sm.parentNode, k = dt.dataset.card, abre = !dt.open;
+      ABIERTO[k] = abre;
+      if (!abre) return;
+      var hoy = hoyISO(), doc = P[hoy] || (P[hoy] = {fecha: hoy});
+      doc.aperturas = doc.aperturas || {}; doc.aperturas[k] = (doc.aperturas[k] || 0) + 1;
+      guardar("plan/" + hoy, doc, "", true);
     };
   });
   var bm = $("#b-empezar");
