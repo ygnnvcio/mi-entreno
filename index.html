@@ -371,8 +371,7 @@ function activas(hoy) {
   ((D.agenda || {}).bloques || []).forEach(function (b) { if (b.card && ahora >= minutos(b.h) && ahora < minutos(b.f)) a[b.card] = true; });
   if (!Z[hoy] && ahora < minutos("12:00")) a.sueno = true;
   if (D.fijo) a.comidas = true;   // platos fijos: apartado siempre a la vista (Ignacio, 2026-10-16)
-  if (diaDe(hoy).tipo !== "libre" && !(E[hoy] && E[hoy].creado)) a.entreno = true;   // día de gym: arriba hasta guardarlo
-  if (SEL) a.entreno = true;
+  // El entreno no se abre solo (Ignacio, 2026-10-16): la rutina se mira cuando él la abre; tocar un día no la despliega.
   return a;
 }
 var ABIERTO = {};   // lo que abriste o cerraste a mano en esta visita manda sobre la agenda
@@ -384,14 +383,14 @@ function render() {
   var hoy = hoyISO(), sel = SEL || hoy, A = activas(hoy), d = diaDe(sel);
   cabecera(hoy);
   var nC = ((C[hoy] || {}).items || []).length, sz = Z[hoy];
-  // Orden fijo, sin saltos (Ignacio, 2026-10-16: "no prioriza bien"): semana y dormir, platos fijos, entreno,
-  // agenda, sueño y guía. La rutina de mañana sube solo mientras es su bloque; el sí o sí sale solo si tiene algo.
+  // Orden fijo, sin saltos (Ignacio, 2026-10-16): semana y dormir, Activa tu cuerpo (así empieza el día), platos fijos
+  // al lado hasta automatizarlos, entreno plegado, agenda, sueño y guía. El sí o sí sale solo si tiene algo.
   var sos = ((P[hoy] || {}).sosi || []).length ? sosiHtml(hoy) : "";
   var manana = mananaHtml(hoy);
-  $("#v-hoy").innerHTML = arribaHtml(hoy, sel) + (A.manana || RUN ? manana : "") + sos +
+  $("#v-hoy").innerHTML = arribaHtml(hoy, sel) + manana + sos +
     pliegue("comidas", 'Mis platos fijos <span class="sub">· ' + nC + ' de 5 · ' + protDe(hoy) + ' g</span>', comidasHtml(hoy), A.comidas) +
     pliegue("entreno", 'Entreno <span class="sub">· ' + esc(d.tipo === "libre" ? "día libre" : d.n) + (d.tipo === "libre" ? "" : " · " + ((E[sel] || {}).items || []).filter(function (x) { return x.hecho; }).length + " de " + d.ej.length) + '</span>', sesionHtml(sel, hoy), A.entreno) +
-    agendaHtml(hoy) + (A.manana || RUN ? "" : manana) +
+    agendaHtml(hoy) +
     pliegue("sueno", 'Sueño <span class="sub">· ' + (sz ? sz.horas + " h" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno) +
     pliegue("guia", 'Recetas y reglas', guiaHtml(), false);
   enlazar(sel);
