@@ -264,7 +264,12 @@ function arribaHtml(hoy, sel) {
   var meta = D.dormir || "22:00", falta = minutos(meta) - minutos(horaLocal());
   var txt = falta > 0 ? "faltan " + Math.floor(falta / 60) + " h " + (falta % 60) + " min" : "ya es hora: a la cama";
   return semanaHtml(hoy, sel).replace('<div class="card">', '<div class="card dormir">').replace(/<\/div>$/, "") +
-    '<div class="fijo-sueno"><b>Dormir ' + esc(meta) + ' · despertar ' + esc(D.despertar || "06:00") + '</b><span>' + txt + '</span></div></div>';
+    '<div class="fijo-sueno"><b>Dormir ' + esc(meta) + ' · despertar ' + esc(D.despertar || "06:00") + '</b><span>' + txt + '</span></div>' + perroHtml() + '</div>';
+}
+// Sacar al perro todos los días: le hace bien a él y a la cabeza de Ignacio (2026-10-16). La hora sale de la agenda.
+function perroHtml() {
+  var b = ((D.agenda || {}).bloques || []).filter(function (x) { return /perro/i.test(x.n); })[0];
+  return '<div class="fijo-sueno"><b>Sacar al perro' + (b ? ' · ' + esc(b.h) : '') + '</b><span>todos los días</span></div>';
 }
 function sosiHtml(hoy) {
   var p = P[hoy] || {}, xs = p.sosi || [];
@@ -289,15 +294,18 @@ function agendaHtml(hoy) {
   if (!D.agenda) return "";
   var d = diaDe(hoy), p = P[hoy] || {}, ahora = minutos(horaLocal()), C0 = (C[hoy] || {}).items || [];
   var ya = [], vista = [], resto = [], act = null, sig = null;
-  D.agenda.bloques.forEach(function (b) {
+  // Solo lo justo y necesario (Ignacio, 2026-10-16): cuerpo, gym, comidas, Dante y cierre/dormir. Los bloques de trabajo
+  // no se agendan aquí; el tiempo entre anclas es suyo.
+  var ESENCIAL = (D.agenda.app_tipos || ["cuerpo", "gym", "comida", "dante", "cierre"]);
+  D.agenda.bloques.filter(function (b) { return ESENCIAL.indexOf(b.t) >= 0; }).forEach(function (b) {
     var ini = minutos(b.h), fin = minutos(b.f), f = filaAg(b, d, p, C0, ahora);
     if (ahora >= ini && ahora < fin) act = b; else if (!sig && ini > ahora) sig = b;
     if (ahora >= fin) ya.push(f); else if (vista.length < 4) vista.push(f); else resto.push(f);
   });
   // Lo que muestra el widget de Structured: qué toca ahora y en cuánto empieza lo siguiente.
-  var foco = act ? '<b>Ahora: ' + esc(act.n) + '</b> · quedan ' + enMin(minutos(act.f) - ahora) : '<b>Libre ahora</b>';
+  var foco = act ? '<b>Ahora: ' + esc(act.n) + '</b> · quedan ' + enMin(minutos(act.f) - ahora) : '<b>Tiempo libre</b> · es tuyo';
   if (sig) foco += '<br><span>Sigue ' + esc(sig.n) + ' en ' + enMin(minutos(sig.h) - ahora) + '</span>';
-  return '<div class="card" id="card-agenda"><div class="sub">Tu día · hora de Raleigh</div><div class="foco">' + foco + '</div>' +
+  return '<div class="card" id="card-agenda"><div class="sub">Tu día · solo lo fijo, lo demás es tuyo</div><div class="foco">' + foco + '</div>' +
     (ya.length ? '<details class="plan"><summary>' + ya.length + ' bloques antes de ahora</summary><div class="tls">' + ya.join("") + '</div></details>' : "") +
     '<div class="tls">' + (vista.join("") || '<div class="sub">El día terminó. A dormir.</div>') + '</div>' +
     (resto.length ? '<details class="plan"><summary>Resto del día (' + resto.length + ')</summary><div class="tls">' + resto.join("") + '</div></details>' : "") + '</div>';
