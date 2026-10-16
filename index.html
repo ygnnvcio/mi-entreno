@@ -51,9 +51,8 @@ h1,h2{font-family:"Barlow Condensed",Inter,sans-serif;letter-spacing:.01em;text-
 .kpis span{font-size:11px;color:rgba(255,255,255,.75)}
 
 main{padding-inline:16px;max-width:620px;margin:0 auto}
-.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin:14px 0;box-shadow:var(--shadow)}
-.card.dormir{border-left:4px solid #7c5cff}
 .fijo-sueno{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.fijo-sueno span{color:var(--mut);font-size:12.5px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin:14px 0;box-shadow:var(--shadow)}
 .card h2{font-size:24px;font-weight:700;margin:0 0 2px;text-transform:uppercase;line-height:1.1}
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
 .sub{color:var(--mut);font-size:13.5px}
@@ -165,7 +164,7 @@ nav button.on{color:var(--acc)}
 .tl.listo .tl-c{background:var(--c)}.tl.listo .tl-c::after{content:"";display:block;width:10px;height:5px;margin:7px auto 0;border-left:2.5px solid #fff;border-bottom:2.5px solid #fff;transform:rotate(-45deg)}
 .tl.listo .tl-q,.tl.ya .tl-q,.tl.ya .tl-h{opacity:.5}.tl.listo .tl-q b{text-decoration:line-through}
 .tl.ahora{background:var(--acc2);border-radius:12px}.tl.ahora .tl-p{width:16px;height:16px;margin-top:2px}
-.t-cuerpo{--c:#e8833a}.t-comida{--c:#c9a227}.t-plata{--c:#3b82f6}.t-gym{--c:var(--acc)}.t-bloque{--c:#7c5cff}.t-pausa{--c:#9aa0a6}.t-dante{--c:#e05a8a}.t-cierre{--c:#64748b}
+.t-cuerpo{--c:#e8833a}.t-comida{--c:#c9a227}.t-plata{--c:#3b82f6}.t-gym{--c:var(--acc)}.t-bloque{--c:#7c5cff}.t-pausa{--c:#9aa0a6}.t-dante{--c:#e05a8a}.t-cierre{--c:#64748b}.t-mac{--c:#3b82f6}
 .run{border:2px solid var(--acc)}.run-top{display:flex;justify-content:space-between;align-items:baseline;color:var(--mut);font-size:13px;font-weight:600}
 .run-top b{font:700 22px/1 "Barlow Condensed",sans-serif;color:var(--acc);font-variant-numeric:tabular-nums}
 .run .barra{margin:10px 0 14px}.run-n{font-size:28px;line-height:1.1;margin:0}.run-d{font-size:16px;margin-top:8px;line-height:1.4}
@@ -255,21 +254,49 @@ function anterior(ej, antesDe) {
 }
 
 
-// ---------------------------------------------------------------- Agenda
-var P = {};   // plan del día por fecha: {sosi: [{t, para, hecho}], bloques: {"10:15": "tarea"}}
+// ---------------------------------------------------------------- Tu día
+var P = {};   // plan del día por fecha: {sosi: [{t, para, hecho}], hechos: {"06:15": true}, manana: [...]}
 function minutos(h) { var p = h.split(":"); return +p[0] * 60 + +p[1]; }
 function enMin(m) { return m < 60 ? m + " min" : Math.floor(m / 60) + "h" + (m % 60 ? ("0" + m % 60).slice(-2) : ""); }
-// Arriba de todo, fijo (Ignacio, 2026-10-16): qué entreno toca cada día de la semana y la hora de dormir y despertar.
-function arribaHtml(hoy, sel) {
-  var meta = D.dormir || "22:00", falta = minutos(meta) - minutos(horaLocal());
-  var txt = falta > 0 ? "faltan " + Math.floor(falta / 60) + " h " + (falta % 60) + " min" : "ya es hora: a la cama";
-  return semanaHtml(hoy, sel).replace('<div class="card">', '<div class="card dormir">').replace(/<\/div>$/, "") +
-    '<div class="fijo-sueno"><b>Dormir ' + esc(meta) + ' · despertar ' + esc(D.despertar || "06:00") + '</b><span>' + txt + '</span></div>' + perroHtml() + '</div>';
+// Cada cosa una sola vez (Ignacio, 2026-10-16: "no debe haber doble mención"). Despertar vive en Activa tu cuerpo,
+// las comidas en Mis platos fijos y el gym en Entreno; esta tarjeta lleva solo las anclas sin tarjeta propia, más la
+// MacBook como una sola ancla (de 10:15 a 20:30, comidas en medio) en vez de los bloques de trabajo uno por uno.
+function macDe() {
+  var bs = ((D.agenda || {}).bloques || []).filter(function (b) { return b.t === "bloque"; });
+  return bs.length ? {h: bs[0].h, f: bs[bs.length - 1].f} : {h: "10:15", f: "20:30"};
 }
-// Sacar al perro todos los días: le hace bien a él y a la cabeza de Ignacio (2026-10-16). La hora sale de la agenda.
-function perroHtml() {
-  var b = ((D.agenda || {}).bloques || []).filter(function (x) { return /perro/i.test(x.n); })[0];
-  return '<div class="fijo-sueno"><b>Sacar al perro' + (b ? ' · ' + esc(b.h) : '') + '</b><span>todos los días</span></div>';
+function conTarjeta(b) { return !!b.card || b.t === "comida" || b.t === "gym"; }
+function anclas() {
+  var ESENCIAL = D.agenda.app_tipos || ["cuerpo", "gym", "comida", "dante", "cierre"], m = macDe(), out = [], puesta = false;
+  var mac = {h: m.h, f: m.f, n: "MacBook: los negocios primero", t: "mac", nota: "Con pausas para comer. Cómo repartes ese tiempo es tuyo"};
+  D.agenda.bloques.forEach(function (b) {
+    if (ESENCIAL.indexOf(b.t) < 0 || conTarjeta(b) || /^dormir/i.test(b.n)) return;   // dormir va arriba, en la semana
+    if (!puesta && minutos(b.h) >= minutos(m.h)) { out.push(mac); puesta = true; }
+    out.push(b);
+  });
+  if (!puesta) out.push(mac);
+  return out;
+}
+function filaAg(b, p, ahora) {
+  var ini = minutos(b.h), fin = minutos(b.f), n = b.n, nota = b.nota || "", boton = true, dur = enMin(fin - ini);
+  if (/perro/i.test(n)) { n = "Sacar al perro"; nota = "Todos los días" + (nota ? ". " + nota : ""); }
+  if (/^dormir/i.test(n)) {
+    var meta = D.dormir || b.h, falta = minutos(meta) - ahora;
+    n = "Dormir"; b = {h: meta, f: b.f, t: b.t}; boton = false; dur = "";
+    nota = falta > 0 ? "Faltan " + Math.floor(falta / 60) + " h " + (falta % 60) + " min" : "Ya es hora: a la cama";
+  }
+  if (b.t === "mac") { boton = false; dur = "a " + b.f; }
+  var hecho = !!(p.hechos || {})[b.h];
+  var est = hecho ? " listo" : ahora >= fin ? " ya" : ahora >= ini ? " ahora" : "";
+  return '<div class="tl t-' + b.t + est + '"><div class="tl-h">' + b.h + (dur ? '<small>' + dur + '</small>' : "") + '</div><i class="tl-p"></i>' +
+    '<div class="tl-q"><b>' + esc(n) + '</b>' + (nota ? '<small>' + esc(nota) + '</small>' : "") + '</div>' +
+    (boton ? '<button class="tl-c" data-blk="' + b.h + '" aria-pressed="' + hecho + '" aria-label="Marcar ' + esc(n) + ' como hecho"></button>' : "<span></span>") + '</div>';
+}
+function agendaHtml(hoy) {
+  if (!D.agenda) return "";
+  var p = P[hoy] || {}, ahora = minutos(horaLocal());
+  return '<div class="card" id="card-agenda"><div class="sub">Lo fijo de hoy · el resto del tiempo es tuyo</div><h2>Tu día</h2><div class="tls">' +
+    anclas().map(function (b) { return filaAg(b, p, ahora); }).join("") + '</div></div>';
 }
 function sosiHtml(hoy) {
   var p = P[hoy] || {}, xs = p.sosi || [];
@@ -278,37 +305,29 @@ function sosiHtml(hoy) {
   }).join("") : '<div class="sub">Todavía no hay sí o sí para hoy. El Cierre de anoche los deja aquí (máximo 3).</div>';
   return '<div class="card" id="card-sosi"><div class="sub">Sí o sí de hoy · van antes que todo</div><h2>' + (xs.length ? xs.filter(function (x) { return x.hecho; }).length + " de " + xs.length + " hechos" : "Sin lista") + '</h2>' + cuerpo + '</div>';
 }
-
-// Agenda como línea del día (comportamiento visto en Structured): punto de color por tipo sobre una línea,
-// hora y duración, y un círculo a la derecha que se toca para dar el bloque por hecho.
-function filaAg(b, d, p, C0, ahora) {
-  var ini = minutos(b.h), fin = minutos(b.f), n = b.n, nota = (p.bloques || {})[b.h] || b.nota || "";
-  if (b.t === "gym") { n = d.tipo === "libre" ? "Día libre, sin gym" : "Gym: " + d.n; nota = d.tipo === "libre" ? "Descanso total" : nota; }
-  var hecho = !!(p.hechos || {})[b.h] || (b.t === "comida" && C0.some(function (x) { return x.slot === b.slot; }));
-  var est = hecho ? " listo" : ahora >= fin ? " ya" : ahora >= ini ? " ahora" : "";
-  return '<div class="tl t-' + b.t + est + '"><div class="tl-h">' + b.h + '<small>' + enMin(fin - ini) + '</small></div><i class="tl-p"></i>' +
-    '<div class="tl-q"><b>' + esc(n) + '</b>' + (nota ? '<small>' + esc(nota) + '</small>' : "") + '</div>' +
-    '<button class="tl-c" data-blk="' + b.h + '" aria-pressed="' + hecho + '" aria-label="Marcar ' + esc(n) + ' como hecho"></button></div>';
-}
-function agendaHtml(hoy) {
-  if (!D.agenda) return "";
-  var d = diaDe(hoy), p = P[hoy] || {}, ahora = minutos(horaLocal()), C0 = (C[hoy] || {}).items || [];
-  var ya = [], vista = [], resto = [], act = null, sig = null;
-  // Solo lo justo y necesario (Ignacio, 2026-10-16): cuerpo, gym, comidas, Dante y cierre/dormir. Los bloques de trabajo
-  // no se agendan aquí; el tiempo entre anclas es suyo.
-  var ESENCIAL = (D.agenda.app_tipos || ["cuerpo", "gym", "comida", "dante", "cierre"]);
-  D.agenda.bloques.filter(function (b) { return ESENCIAL.indexOf(b.t) >= 0; }).forEach(function (b) {
-    var ini = minutos(b.h), fin = minutos(b.f), f = filaAg(b, d, p, C0, ahora);
-    if (ahora >= ini && ahora < fin) act = b; else if (!sig && ini > ahora) sig = b;
-    if (ahora >= fin) ya.push(f); else if (vista.length < 4) vista.push(f); else resto.push(f);
+// Qué toca ahora y qué sigue (comportamiento visto en Structured). Va en la cabecera, no en una tarjeta,
+// para que el día se lea de un vistazo sin repetir nada abajo.
+function ahoraSigue(hoy) {
+  if (!D.agenda) return "Gym " + D.rutina.hora;
+  var d = diaDe(hoy), ahora = minutos(horaLocal()), m = macDe(), act = null, sig = null;
+  var xs = [{h: m.h, f: m.f, n: "MacBook", mac: true}];
+  D.agenda.bloques.forEach(function (b) {
+    var n = b.n;
+    if (b.card === "manana") n = D.agenda.manana ? D.agenda.manana.titulo : n;
+    else if (b.t === "comida") n = ((D.comidas || [])[b.slot] || {}).n || n;
+    else if (b.t === "gym") { if (d.tipo === "libre") return; n = "Gym"; }
+    else if (/perro/i.test(n)) n = "Sacar al perro";
+    else if (["cuerpo", "dante", "cierre"].indexOf(b.t) < 0) return;
+    xs.push({h: b.h, f: b.f, n: n.split(",")[0].split(":")[0]});
   });
-  // Lo que muestra el widget de Structured: qué toca ahora y en cuánto empieza lo siguiente.
-  var foco = act ? '<b>Ahora: ' + esc(act.n) + '</b> · quedan ' + enMin(minutos(act.f) - ahora) : '<b>Tiempo libre</b> · es tuyo';
-  if (sig) foco += '<br><span>Sigue ' + esc(sig.n) + ' en ' + enMin(minutos(sig.h) - ahora) + '</span>';
-  return '<div class="card" id="card-agenda"><div class="sub">Tu día · solo lo fijo, lo demás es tuyo</div><div class="foco">' + foco + '</div>' +
-    (ya.length ? '<details class="plan"><summary>' + ya.length + ' bloques antes de ahora</summary><div class="tls">' + ya.join("") + '</div></details>' : "") +
-    '<div class="tls">' + (vista.join("") || '<div class="sub">El día terminó. A dormir.</div>') + '</div>' +
-    (resto.length ? '<details class="plan"><summary>Resto del día (' + resto.length + ')</summary><div class="tls">' + resto.join("") + '</div></details>' : "") + '</div>';
+  xs.sort(function (a, b) { return minutos(a.h) - minutos(b.h); });
+  xs.forEach(function (x) {
+    var ini = minutos(x.h), fin = minutos(x.f);
+    if (ahora >= ini && ahora < fin && (!act || act.mac)) act = x;
+    if (!sig && ini > ahora) sig = x;
+  });
+  var t = act ? "Ahora: " + act.n : "Tiempo libre";
+  return t + (sig ? " · sigue " + sig.n + " " + sig.h : "");
 }
 
 // Rutina de mañana como rutina de Hevy: tarjeta con resumen y un botón Empezar; al empezar, un paso a la vez
@@ -328,15 +347,17 @@ function mananaHtml(hoy) {
       '<div class="run-pie"><button class="sec" id="b-saltar">Saltar</button><button class="sec" id="b-parar">Parar</button></div>' +
       (prox ? '<div class="sub run-sig">Sigue: ' + esc(prox.n) + '</div>' : "") + '</div>';
   }
-  var temprano = !!activas(hoy).manana;
+  // Así parte el día (Ignacio, 2026-10-16): abierta hasta que la haces o hasta mediodía; después queda plegada.
+  var temprano = !!activas(hoy).manana || (n < N && minutos(horaLocal()) < minutos("12:00"));
+  if ("manana" in ABIERTO) temprano = false;
   var resumen = '<div class="sub">' + esc(M.pasos.map(function (x) { return x.n; }).join(" · ")) + '</div>';
   var cuerpo = resumen + '<button id="b-empezar">' + (n === N ? "Hecha. Repetir" : n ? "Seguir (" + n + " de " + N + ")" : "Empezar " + M.min + " min") + '</button>' +
     '<details class="plan"><summary>Detalle y fuentes</summary><ol class="plan-l">' + M.pasos.map(function (x, i) {
       return '<li>' + (m[i] ? "<s>" : "") + '<b>' + esc(x.n) + '</b>: ' + esc(x.d) + (m[i] ? "</s>" : "") + '<br><small class="sub">' + esc(x.fuente) + '</small></li>';
     }).join("") + '</ol><div class="sub">' + esc(M.regla) + '. ' + esc(M.alarma) + '.</div></details>';
-  var tit = esc(M.titulo) + ' <span class="sub">· ' + n + ' de ' + N + '</span>';
-  if (temprano) return '<div class="card" id="card-manana"><div class="sub">Al despertar, antes del desayuno</div><h2>' + tit + '</h2>' + cuerpo + '</div>';
-  return '<div class="card" id="card-manana"><details class="plan" data-card="manana" style="margin-top:0;border-top:0;padding-top:0"><summary>' + tit + '</summary>' + cuerpo + '</details></div>';
+  var tit = esc(M.titulo) + ' <span class="sub">· ' + n + ' de ' + N + '</span>', desp = esc(D.despertar || "06:00");
+  if (temprano) return '<div class="card" id="card-manana"><div class="sub">Despertar ' + desp + ' · así parte el día</div><h2>' + tit + '</h2>' + cuerpo + '</div>';
+  return '<div class="card" id="card-manana"><details class="plan" data-card="manana" style="margin-top:0;border-top:0;padding-top:0"' + (ABIERTO.manana ? " open" : "") + '><summary><span>' + esc(M.titulo) + ' <span class="sub">· despertar ' + desp + ' · ' + n + ' de ' + N + '</span></span></summary>' + cuerpo + '</details></div>';
 }
 function reloj(ms) { var r = Math.max(0, Math.round(ms / 1000)); return Math.floor(r / 60) + ":" + ("0" + r % 60).slice(-2); }
 function tic() {
@@ -365,7 +386,7 @@ function cabecera(hoy) {
   $("#titulo").textContent = d.tipo === "libre" ? "Hoy descansas" : corto(d) === "Pierna" ? "Día de pierna" : d.n.split(" + ")[0];
   var pill = $("#pill");
   pill.hidden = false;
-  pill.textContent = d.tipo === "libre" ? "Mañana: " + diaDe(addDias(hoy, 1)).n.toLowerCase() : "Gym " + D.rutina.hora;
+  pill.textContent = ahoraSigue(hoy);
   var n = semanaN(hoy);
   $("#pct").textContent = n;
   $("#arco").style.strokeDashoffset = 201 - 201 * Math.min(1, n / 6);
@@ -376,7 +397,7 @@ function cabecera(hoy) {
 // que pide el bloque actual de la agenda (campo card en agenda.json), el resto va plegado y cada tarjeta cuenta sus aperturas.
 function activas(hoy) {
   var a = {}, ahora = minutos(horaLocal());
-  ((D.agenda || {}).bloques || []).forEach(function (b) { if (b.card && ahora >= minutos(b.h) && ahora < minutos(b.f)) a[b.card] = true; });
+  ((D.agenda || {}).bloques || []).forEach(function (b) { if (b.card && b.card !== "entreno" && ahora >= minutos(b.h) && ahora < minutos(b.f)) a[b.card] = true; });
   if (!Z[hoy] && ahora < minutos("12:00")) a.sueno = true;
   if (D.fijo) a.comidas = true;   // platos fijos: apartado siempre a la vista (Ignacio, 2026-10-16)
   // El entreno no se abre solo (Ignacio, 2026-10-16): la rutina se mira cuando él la abre; tocar un día no la despliega.
@@ -385,20 +406,22 @@ function activas(hoy) {
 var ABIERTO = {};   // lo que abriste o cerraste a mano en esta visita manda sobre la agenda
 function pliegue(k, titulo, html, abierta) {
   if (k in ABIERTO) abierta = ABIERTO[k];
-  return '<details class="card pl" data-card="' + k + '"' + (abierta ? " open" : "") + '><summary>' + titulo + '</summary><div class="pl-in">' + html + '</div></details>';
+  return '<details class="card pl" data-card="' + k + '"' + (abierta ? " open" : "") + '><summary><span>' + titulo + '</span></summary><div class="pl-in">' + html + '</div></details>';
 }
 function render() {
   var hoy = hoyISO(), sel = SEL || hoy, A = activas(hoy), d = diaDe(sel);
   cabecera(hoy);
-  var nC = ((C[hoy] || {}).items || []).length, sz = Z[hoy];
-  // Orden fijo, sin saltos (Ignacio, 2026-10-16): semana y dormir, Activa tu cuerpo (así empieza el día), platos fijos
-  // al lado hasta automatizarlos, entreno plegado, agenda, sueño y guía. El sí o sí sale solo si tiene algo.
+  var sz = Z[hoy], hechos = ((E[sel] || {}).items || []).filter(function (x) { return x.hecho; }).length;
+  // Orden fijo, sin saltos según la hora, y cada cosa una sola vez (Ignacio, 2026-10-16): la semana arriba;
+  // Activa tu cuerpo con el despertar; Tu día con las anclas sin tarjeta propia (perro, MacBook, Dante, cierre,
+  // dormir); el sí o sí si el Cierre dejó algo; platos fijos abiertos; entreno, sueño y guía plegados.
   var sos = ((P[hoy] || {}).sosi || []).length ? sosiHtml(hoy) : "";
-  var manana = mananaHtml(hoy);
-  $("#v-hoy").innerHTML = arribaHtml(hoy, sel) + manana + sos +
-    pliegue("comidas", 'Mis platos fijos <span class="sub">· ' + nC + ' de 5 · ' + protDe(hoy) + ' g</span>', comidasHtml(hoy), A.comidas) +
-    pliegue("entreno", 'Entreno <span class="sub">· ' + esc(d.tipo === "libre" ? "día libre" : d.n) + (d.tipo === "libre" ? "" : " · " + ((E[sel] || {}).items || []).filter(function (x) { return x.hecho; }).length + " de " + d.ej.length) + '</span>', sesionHtml(sel, hoy), A.entreno) +
-    agendaHtml(hoy) +
+  var ent = [];
+  if (sel !== hoy) ent.push(DIAS_N[dow(sel)].toLowerCase() + " " + fc(sel));
+  if (d.tipo === "libre") ent.push("día libre"); else { if (sel === hoy) ent.push(D.rutina.hora); ent.push(hechos + " de " + d.ej.length); }
+  $("#v-hoy").innerHTML = semanaHtml(hoy, sel) + mananaHtml(hoy) +
+    pliegue("comidas", 'Mis platos fijos', comidasHtml(hoy), A.comidas) + agendaHtml(hoy) + sos +
+    pliegue("entreno", 'Entreno <span class="sub">· ' + esc(ent.join(" · ")) + '</span>', sesionHtml(sel, hoy), A.entreno) +
     pliegue("sueno", 'Sueño <span class="sub">· ' + (sz ? sz.horas + " h" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno) +
     pliegue("guia", 'Recetas y reglas', guiaHtml(), false);
   enlazar(sel);
@@ -419,8 +442,15 @@ function semanaHtml(hoy, sel) {
     out += '<button class="b-' + d.tipo + (f === sel ? " sel" : "") + (hecho(f) ? " hecho" : "") + '" data-f="' + f + '" aria-pressed="' + (f === sel) + '">' +
       (f === hoy ? "Hoy" : DIAS_N[dow(f)].slice(0, 3)) + '<b>' + +f.slice(8) + '</b><span class="t">' + esc(corto(d)) + '</span></button>';
   }
-  return '<div class="card"><div class="sub">Tu semana · toca un día para verlo</div><div class="semana7">' + out + '</div>' +
-    '<div class="leyenda"><span><i class="b-gym"></i>Gym</span><span><i class="b-suave"></i>Suave</span><span><i class="b-libre"></i>Libre</span><span>● entrenado</span></div></div>';
+  var ds = diaDe(sel), otro = sel !== hoy ? '<div class="foco"><b>' + DIAS_N[dow(sel)] + ' ' + fc(sel) + ': ' + esc(ds.n) + '</b><br><span>' +
+    (ds.tipo === "libre" ? "Descanso total." : "La rutina queda abajo, plegada; ábrela cuando quieras.") + ' Toca Hoy para volver.</span></div>' : "";
+  return '<div class="card" id="card-semana"><div class="sub">Tu semana · qué toca cada día</div><div class="semana7">' + out + '</div>' +
+    '<div class="leyenda"><span><i class="b-gym"></i>Gym</span><span><i class="b-suave"></i>Suave</span><span><i class="b-libre"></i>Libre</span><span>● entrenado</span></div>' + otro + dormirLinea() + '</div>';
+}
+// Dormir arriba de todo y fijo (Ignacio, 2026-10-16); en Tu día ya no se repite.
+function dormirLinea() {
+  var meta = D.dormir || "22:00", falta = minutos(meta) - minutos(horaLocal());
+  return '<div class="fijo-sueno"><b>Dormir ' + esc(meta) + '</b><span>' + (falta > 0 ? "faltan " + Math.floor(falta / 60) + " h " + (falta % 60) + " min" : "ya es hora: a la cama") + '</span></div>';
 }
 
 function sesionHtml(f, hoy) {
@@ -429,8 +459,7 @@ function sesionHtml(f, hoy) {
   var titulo = (f === hoy ? "Tu entreno de hoy" : DIAS_N[dow(f)] + " " + fc(f));
   if (d.tipo === "libre") return '<div class="card"><div class="sub">' + titulo + '</div><h2>Día libre</h2><div class="sub">Descanso total. Si quieres, movilidad ligera.</div></div>';
   var hechosN = (prev.items || []).filter(function (x) { return x.hecho; }).length, futuro = f > hoy;
-  var out = '<div class="card" id="card-entreno"><div class="card-top"><div><div class="sub">' + titulo + '</div><h2>' + esc(d.n) + '</h2></div>' +
-    '<span class="badge b-' + d.tipo + '">' + esc(D.rutina.hora) + '</span></div>' +
+  var out = '<div class="card" id="card-entreno"><div class="card-top"><div><div class="sub">' + titulo + '</div><h2>' + esc(d.n) + '</h2></div></div>' +
     '<div class="barra"><i style="width:' + Math.round(hechosN / d.ej.length * 100) + '%"></i></div><div class="sub" style="margin-top:6px">' + hechosN + ' de ' + d.ej.length + ' ejercicios</div><div style="margin-top:8px">';
   var toca = -1;
   d.ej.forEach(function (x, i) { if (toca < 0 && !(marcas[x.n] || {}).hecho) toca = i; });
@@ -458,19 +487,28 @@ function escala(nombre, n, val) {
   return s + '</div>';
 }
 
+// La comida ya tiene su nombre y su hora en el encabezado: el botón dice solo qué lleva el plato
+// ("Desayuno fijo: 3 huevos, ..." pasa a "3 huevos, ..."). Si queda muy corto, van sus ingredientes.
+function platoN(r, comida) {
+  var pal = comida.split(/[ ,]/)[0], n = r.n;
+  if (n.toLowerCase().indexOf(pal.toLowerCase()) !== 0) return n;
+  n = n.slice(pal.length).replace(/^\s*fij[oa]\b:?\s*/i, "").replace(/^\s+/, "");
+  if (n.length < 15) n = r.ing.map(function (x) { return x[0].toLowerCase(); }).join(", ");
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
 function comidasHtml(hoy) {
   var c = C[hoy] || {}, por = {}, P = D.proteina, pr = protDe(hoy);
   (c.items || []).forEach(function (x) { por[x.slot] = x; });
   var out = '<div class="card" id="card-comidas"><div class="sub">' + (D.fijo ? 'Proteína de hoy' : 'Comida') + '</div><h2>' + pr + ' de ' + P.min + '–' + P.max + ' g de proteína</h2>' +
     '<div class="barra"><i style="width:' + Math.min(100, Math.round(pr / P.max * 100)) + '%"></i></div>' +
-    '<div class="sub" style="margin-top:6px">' + (D.fijo ? 'Tus platos fijos, los mismos todos los días. Tócalo cuando lo comas.' : 'Elige una opción en cada comida. Para ganar músculo, apunta a la parte alta.') + '</div><div style="margin-top:6px">';
+    '<div class="sub" style="margin-top:6px">' + (D.fijo ? 'Los mismos todos los días. Toca el plato cuando lo comas.' : 'Elige una opción en cada comida. Para ganar músculo, apunta a la parte alta.') + '</div><div style="margin-top:6px">';
   D.comidas.forEach(function (s, i) {
     var elegida = por[i];
     out += '<div class="slot' + (elegida ? " lista" : "") + '"><div class="slot-h"><span class="hora">' + esc(s.hora) + '</span><span class="n">' + esc(s.n) + '</span></div>';
     s.op.forEach(function (id) {
       var r = D.recetas[id]; if (!r) return;
       var on = elegida && elegida.id === id;
-      out += '<button class="op' + (on ? " on" : "") + '" data-slot="' + i + '" data-id="' + esc(id) + '" aria-pressed="' + !!on + '"><span class="d">' + esc(r.n) + '<small>' + r.kcal + ' kcal · ' + r.min + ' min' + (on ? ' · comida a las ' + esc(elegida.hora) : "") + '</small></span><span class="m">' + r.prot + ' g<small>proteína</small></span></button>';
+      out += '<button class="op' + (on ? " on" : "") + '" data-slot="' + i + '" data-id="' + esc(id) + '" aria-pressed="' + !!on + '"><span class="d">' + esc(D.fijo ? platoN(r, s.n) : r.n) + '<small>' + r.kcal + ' kcal · ' + r.min + ' min' + (on ? ' · comida a las ' + esc(elegida.hora) : "") + '</small></span><span class="m">' + r.prot + ' g<small>proteína</small></span></button>';
     });
     out += '</div>';
   });
@@ -480,7 +518,7 @@ function comidasHtml(hoy) {
 var HORAS = [[5, "5", "o menos"], [6, "6", ""], [7, "7", ""], [8, "8", ""], [9, "9", "o más"]];
 function suenoHtml(hoy) {
   var v = Z[hoy] ? Number(Z[hoy].horas) : 0;
-  return '<div class="card" id="card-sueno"><div class="sub">Sueño · meta 22:00 a 06:00</div><h2>¿Cuántas horas dormiste anoche?</h2><div class="horas">' +
+  return '<div class="card" id="card-sueno"><div class="sub">Se anota una vez, en la mañana</div><h2>¿Cuántas horas dormiste anoche?</h2><div class="horas">' +
     HORAS.map(function (x) {
       var on = v && (x[0] === 5 ? v <= 5 : x[0] === 9 ? v >= 9 : v === x[0]);
       return '<button class="' + (on ? "on" : "") + '" data-h="' + x[0] + '">' + x[1] + (x[2] ? '<small>' + x[2] + '</small>' : "") + '</button>';
@@ -668,6 +706,12 @@ function arrancar() {
   });
 }
 arrancar();
+setInterval(function () {
+  if (!D || document.hidden) return;
+  var hoy = hoyISO(), el = $("#card-agenda");
+  $("#pill").textContent = ahoraSigue(hoy);
+  if (el) { el.outerHTML = agendaHtml(hoy); enlazar(SEL || hoy); }
+}, 60000);
 </script>
 </body>
 </html>
