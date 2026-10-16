@@ -53,6 +53,7 @@ h1,h2{font-family:"Barlow Condensed",Inter,sans-serif;letter-spacing:.01em;text-
 main{padding-inline:16px;max-width:620px;margin:0 auto}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin:14px 0;box-shadow:var(--shadow)}
 .card.dormir{border-left:4px solid #7c5cff}
+.fijo-sueno{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.fijo-sueno span{color:var(--mut);font-size:12.5px}
 .card h2{font-size:24px;font-weight:700;margin:0 0 2px;text-transform:uppercase;line-height:1.1}
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
 .sub{color:var(--mut);font-size:13.5px}
@@ -258,11 +259,12 @@ function anterior(ej, antesDe) {
 var P = {};   // plan del día por fecha: {sosi: [{t, para, hecho}], bloques: {"10:15": "tarea"}}
 function minutos(h) { var p = h.split(":"); return +p[0] * 60 + +p[1]; }
 function enMin(m) { return m < 60 ? m + " min" : Math.floor(m / 60) + "h" + (m % 60 ? ("0" + m % 60).slice(-2) : ""); }
-// Fijo arriba de todo, a pedido de Ignacio (2026-10-16): la hora de dormir no se mueve.
-function dormirHtml() {
+// Arriba de todo, fijo (Ignacio, 2026-10-16): qué entreno toca cada día de la semana y la hora de dormir y despertar.
+function arribaHtml(hoy, sel) {
   var meta = D.dormir || "22:00", falta = minutos(meta) - minutos(horaLocal());
   var txt = falta > 0 ? "faltan " + Math.floor(falta / 60) + " h " + (falta % 60) + " min" : "ya es hora: a la cama";
-  return '<div class="card dormir"><div class="sub">Fijo, todos los días</div><h2>Dormir ' + esc(meta) + ' · despertar ' + esc(D.despertar || "06:00") + '</h2><div class="sub">' + txt + '</div></div>';
+  return semanaHtml(hoy, sel).replace('<div class="card">', '<div class="card dormir">').replace(/<\/div>$/, "") +
+    '<div class="fijo-sueno"><b>Dormir ' + esc(meta) + ' · despertar ' + esc(D.despertar || "06:00") + '</b><span>' + txt + '</span></div></div>';
 }
 function sosiHtml(hoy) {
   var p = P[hoy] || {}, xs = p.sosi || [];
@@ -382,15 +384,16 @@ function render() {
   var hoy = hoyISO(), sel = SEL || hoy, A = activas(hoy), d = diaDe(sel);
   cabecera(hoy);
   var nC = ((C[hoy] || {}).items || []).length, sz = Z[hoy];
-  var tarjetas = [
-    {k: "manana", html: mananaHtml(hoy)},
-    {k: "entreno", html: pliegue("entreno", 'Entreno <span class="sub">· ' + esc(d.tipo === "libre" ? "día libre" : d.n) + (d.tipo === "libre" ? "" : " · " + ((E[sel] || {}).items || []).filter(function (x) { return x.hecho; }).length + " de " + d.ej.length) + '</span>', semanaHtml(hoy, sel) + sesionHtml(sel, hoy), A.entreno)},
-    {k: "comidas", html: pliegue("comidas", 'Comidas <span class="sub">· ' + nC + ' de 5 · ' + protDe(hoy) + ' g</span>', comidasHtml(hoy), A.comidas)},
-    {k: "sueno", html: pliegue("sueno", 'Sueño <span class="sub">· ' + (sz ? sz.horas + " h" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno)},
-    {k: "guia", html: pliegue("guia", 'Recetas y reglas', guiaHtml(), false)}
-  ];
-  var arriba = tarjetas.filter(function (t) { return A[t.k]; }), abajo = tarjetas.filter(function (t) { return !A[t.k]; });
-  $("#v-hoy").innerHTML = dormirHtml() + sosiHtml(hoy) + agendaHtml(hoy) + arriba.concat(abajo).map(function (t) { return t.html; }).join("");
+  // Orden fijo, sin saltos (Ignacio, 2026-10-16: "no prioriza bien"): semana y dormir, platos fijos, entreno,
+  // agenda, sueño y guía. La rutina de mañana sube solo mientras es su bloque; el sí o sí sale solo si tiene algo.
+  var sos = ((P[hoy] || {}).sosi || []).length ? sosiHtml(hoy) : "";
+  var manana = mananaHtml(hoy);
+  $("#v-hoy").innerHTML = arribaHtml(hoy, sel) + (A.manana || RUN ? manana : "") + sos +
+    pliegue("comidas", 'Mis platos fijos <span class="sub">· ' + nC + ' de 5 · ' + protDe(hoy) + ' g</span>', comidasHtml(hoy), A.comidas) +
+    pliegue("entreno", 'Entreno <span class="sub">· ' + esc(d.tipo === "libre" ? "día libre" : d.n) + (d.tipo === "libre" ? "" : " · " + ((E[sel] || {}).items || []).filter(function (x) { return x.hecho; }).length + " de " + d.ej.length) + '</span>', sesionHtml(sel, hoy), A.entreno) +
+    agendaHtml(hoy) + (A.manana || RUN ? "" : manana) +
+    pliegue("sueno", 'Sueño <span class="sub">· ' + (sz ? sz.horas + " h" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno) +
+    pliegue("guia", 'Recetas y reglas', guiaHtml(), false);
   enlazar(sel);
   renderAvance(hoy);
 }
@@ -451,7 +454,7 @@ function escala(nombre, n, val) {
 function comidasHtml(hoy) {
   var c = C[hoy] || {}, por = {}, P = D.proteina, pr = protDe(hoy);
   (c.items || []).forEach(function (x) { por[x.slot] = x; });
-  var out = '<div class="card" id="card-comidas"><div class="sub">' + (D.fijo ? 'Mis platos fijos' : 'Comida') + '</div><h2>' + pr + ' de ' + P.min + '–' + P.max + ' g de proteína</h2>' +
+  var out = '<div class="card" id="card-comidas"><div class="sub">' + (D.fijo ? 'Proteína de hoy' : 'Comida') + '</div><h2>' + pr + ' de ' + P.min + '–' + P.max + ' g de proteína</h2>' +
     '<div class="barra"><i style="width:' + Math.min(100, Math.round(pr / P.max * 100)) + '%"></i></div>' +
     '<div class="sub" style="margin-top:6px">' + (D.fijo ? 'Tus platos fijos, los mismos todos los días. Tócalo cuando lo comas.' : 'Elige una opción en cada comida. Para ganar músculo, apunta a la parte alta.') + '</div><div style="margin-top:6px">';
   D.comidas.forEach(function (s, i) {
