@@ -693,11 +693,16 @@ function renderAvance(hoy) {
 // ---------------------------------------------------------------- Compras
 // Investigaciones de cosas por comprar (context/vida/compras.json del Brain, pedido de Ignacio 2026-10-17).
 // Lo comprado se guarda en la colección "compras" de la API, con el id del producto como clave.
+// El aviso de reponer se esconde si Ignacio tocó "Lo repuse hoy" después de que la revisión lo escribió.
+function avisoDe(x) {
+  var f = (CP[x.id] || {}).f || "";
+  return x.aviso && /^Reponer/.test(x.aviso) && x.aviso_fecha && f > x.aviso_fecha ? x.aviso.split(" · ").slice(1).join(" · ") : (x.aviso || "");
+}
 function compraHtml(x) {
-  var ya = !!(CP[x.id] || {}).comprado;
+  var ya = !!(CP[x.id] || {}).comprado, av = avisoDe(x);
   return '<div class="compra' + (ya ? " ya" : "") + '"><b>' + (x.cantidad > 1 ? x.cantidad + ' × ' : "") + esc(x.corto || x.n) + '</b> <span class="sub">' + esc(x.marca || "") + '</span>' +
     '<div class="toma">' + esc(x.toma || x.cuando) + '</div><div class="sub">' + esc(x.precio_corto || x.precio) + '</div>' +
-    (x.aviso ? '<div class="aviso">' + esc(x.aviso) + '</div>' : "") +
+    (av ? '<div class="aviso">' + esc(av) + '</div>' : "") +
     (x.ojo_corto ? '<div class="ojo">' + esc(x.ojo_corto) + '</div>' : "") +
     '<div class="compra-a"><a class="btn" href="' + esc(x.link) + '" target="_blank" rel="noopener">Comprar</a>' +
     '<label class="chk"><input type="checkbox" data-compra="' + esc(x.id) + '"' + (ya ? " checked" : "") + '>Comprado</label></div>' +
@@ -714,7 +719,7 @@ function renderCompras() {
     return '<div class="area-h">' + esc(a) + '</div>' + por[a].map(function (l) {
       var xs = l.items.filter(function (x) { return x.prioridad !== "despues"; });
       var n = xs.filter(function (x) { return (CP[x.id] || {}).comprado; }).length, k = "compra-" + l.id;
-      var av = xs.filter(function (x) { return x.aviso; }).length;
+      var av = xs.filter(function (x) { return avisoDe(x); }).length;
       var abierta = k in ABIERTO ? ABIERTO[k] : false;
       return '<details class="card pl' + (n === xs.length ? " listo" : "") + '" data-compras="' + k + '"' + (abierta ? " open" : "") + '><summary><span>' + esc(l.n) +
         ' <span class="sub">· ' + (n === xs.length ? "comprado" : n + " de " + xs.length) + (l.mes_total ? " · " + esc(l.mes_total) : "") + '</span>' + (av ? ' <span class="av">' + av + (av > 1 ? " avisos" : " aviso") + '</span>' : "") + '</span></summary><div class="pl-in">' +
@@ -725,7 +730,7 @@ function renderCompras() {
   document.querySelectorAll("details[data-compras] > summary").forEach(function (sm) {
     sm.onclick = function () { ABIERTO[sm.parentNode.dataset.compras] = !sm.parentNode.open; };
   });
-  // Al volver a comprar un consumible, la fecha de compra se reinicia y el aviso de reponer se apaga (auditoría 2026-10-17).
+  // Al volver a comprar un consumible, la fecha de compra se reinicia y avisoDe() esconde el aviso de reponer (auditoría 2026-10-17).
   document.querySelectorAll("[data-repuse]").forEach(function (b) {
     b.onclick = function () {
       var id = b.dataset.repuse, doc = {comprado: true, f: hoyISO()};
