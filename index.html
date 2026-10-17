@@ -96,7 +96,10 @@ button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-
 button:disabled{opacity:.5}
 .ok{color:var(--acc);font-size:13px;font-weight:600;margin-top:10px;display:flex;align-items:center;gap:6px}
 .ok::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--acc)}
-.compra{border-top:1px solid var(--line);padding:14px 0}.card h2+.compra{border-top:0;padding-top:8px}
+.compra{border-top:1px solid var(--line);padding:14px 0}.pl-in>.compra:first-child,.conecta+.compra{border-top:0;padding-top:8px}
+.area-h{font:700 13px/1 Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:22px 4px 0}
+.conecta{margin-top:6px}
+details.listo>summary{opacity:.6}
 .compra.ya{opacity:.55}
 .compra>b{font-size:16.5px}
 .toma{font-size:14.5px;margin-top:4px}
@@ -699,15 +702,24 @@ function compraHtml(x) {
 function renderCompras() {
   var ls = (D && D.compras) || [];
   if (!ls.length) { $("#v-compras").innerHTML = '<div class="card"><h2>Compras</h2><div class="sub">Todavía no hay nada por comprar.</div></div>'; return; }
-  // Solo lo que toca comprar ahora (Ignacio, 2026-10-17: "más cómodo a la vista, nada innecesario").
-  // Lo opcional, las fuentes y el detalle siguen en context/vida/compras.json.
-  $("#v-compras").innerHTML = ls.map(function (l) {
-    var xs = l.items.filter(function (x) { return x.prioridad !== "despues"; });
-    var n = xs.filter(function (x) { return (CP[x.id] || {}).comprado; }).length;
-    return '<div class="card"><div class="sub">' + n + ' de ' + xs.length + ' comprados' + (l.mes_total ? ' · ' + esc(l.mes_total) : "") + '</div><h2>' + esc(l.n) + '</h2>' +
-      xs.map(compraHtml).join("") +
-      (l.tener_en_cuenta_corto ? '<ul class="tec">' + l.tener_en_cuenta_corto.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul>' : "") + '</div>';
+  // Agrupadas por área de su vida y plegadas (Ignacio, 2026-10-17: "con desplegables y con qué área está conectado
+  // de mí, para que no esté toda la información repartida"). Solo lo que toca comprar ahora; el detalle, en compras.json.
+  var areas = [], por = {};
+  ls.forEach(function (l) { var a = l.area || "Otras"; if (!por[a]) { por[a] = []; areas.push(a); } por[a].push(l); });
+  $("#v-compras").innerHTML = areas.map(function (a) {
+    return '<div class="area-h">' + esc(a) + '</div>' + por[a].map(function (l) {
+      var xs = l.items.filter(function (x) { return x.prioridad !== "despues"; });
+      var n = xs.filter(function (x) { return (CP[x.id] || {}).comprado; }).length, k = "compra-" + l.id;
+      var abierta = k in ABIERTO ? ABIERTO[k] : false;
+      return '<details class="card pl' + (n === xs.length ? " listo" : "") + '" data-compras="' + k + '"' + (abierta ? " open" : "") + '><summary><span>' + esc(l.n) +
+        ' <span class="sub">· ' + (n === xs.length ? "comprado" : n + " de " + xs.length) + (l.mes_total ? " · " + esc(l.mes_total) : "") + '</span></span></summary><div class="pl-in">' +
+        (l.conecta ? '<div class="sub conecta">' + esc(l.conecta) + '</div>' : "") + xs.map(compraHtml).join("") +
+        (l.tener_en_cuenta_corto ? '<ul class="tec">' + l.tener_en_cuenta_corto.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul>' : "") + '</div></details>';
+    }).join("");
   }).join("");
+  document.querySelectorAll("details[data-compras] > summary").forEach(function (sm) {
+    sm.onclick = function () { ABIERTO[sm.parentNode.dataset.compras] = !sm.parentNode.open; };
+  });
   document.querySelectorAll("[data-compra]").forEach(function (c) {
     c.onchange = function () {
       var id = c.dataset.compra, doc = {comprado: c.checked, f: hoyISO()};
