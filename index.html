@@ -96,13 +96,14 @@ button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-
 button:disabled{opacity:.5}
 .ok{color:var(--acc);font-size:13px;font-weight:600;margin-top:10px;display:flex;align-items:center;gap:6px}
 .ok::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--acc)}
-.compra{border-top:1px solid var(--line);padding:16px 0}.compra:first-of-type{border-top:0;padding-top:6px}
-.compra.ya{opacity:.6}
-.compra-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.compra-h b{font-size:16px;line-height:1.3}.compra-h span{flex:none;font:700 18px/1 "Barlow Condensed",sans-serif;color:var(--acc)}
-.compra .plan-t{margin-top:8px}.compra .plan-t div>b{white-space:normal;text-align:right;font-weight:600;font-size:13.5px}
-a.btn{display:block;text-align:center;text-decoration:none;font-weight:700;font-size:15px;border-radius:14px;padding:13px 16px;background:var(--acc);color:var(--acc-ink);margin-top:12px}
-a.alt{display:block;color:var(--acc);font-size:13.5px;font-weight:600;margin-top:10px;text-decoration:none}
-.tec{margin:8px 0 0;padding-left:20px}.tec li{margin:6px 0;font-size:14.5px}
+.compra{border-top:1px solid var(--line);padding:14px 0}.card h2+.compra{border-top:0;padding-top:8px}
+.compra.ya{opacity:.55}
+.compra>b{font-size:16.5px}
+.toma{font-size:14.5px;margin-top:4px}
+.ojo{font-size:13px;font-weight:600;color:var(--warn);margin-top:4px}
+.compra-a{display:flex;align-items:center;gap:14px;margin-top:10px}.compra-a label.chk{padding:0;flex:none}
+a.btn{flex:1;display:block;text-align:center;text-decoration:none;font-weight:700;font-size:15px;border-radius:12px;padding:11px 14px;background:var(--acc);color:var(--acc-ink)}
+.tec{margin:6px 0 0;padding:12px 0 0 18px;border-top:1px solid var(--line);color:var(--mut);font-size:13.5px}.tec li{margin:4px 0}
 .aviso{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:13.5px;margin-top:10px;font-weight:500}
 .escala{display:flex;gap:4px;margin-top:6px}
 .escala label{flex:1;min-width:0;text-align:center;border:1px solid var(--line);background:var(--card2);border-radius:10px;padding:9px 0;font-weight:600;cursor:pointer}
@@ -689,26 +690,23 @@ function renderAvance(hoy) {
 // Lo comprado se guarda en la colección "compras" de la API, con el id del producto como clave.
 function compraHtml(x) {
   var ya = !!(CP[x.id] || {}).comprado;
-  return '<div class="compra' + (ya ? " ya" : "") + '"><div class="compra-h"><b>' + esc(x.n) + '</b><span>' + esc(x.mes) + '/mes</span></div>' +
-    '<div class="sub">' + esc(x.para) + '</div>' +
-    '<div class="plan-t"><div><span>Dosis</span><b>' + esc(x.dosis) + '</b></div><div><span>Cuándo</span><b>' + esc(x.cuando) + '</b></div>' +
-    '<div><span>Precio</span><b>' + esc(x.precio) + '</b></div><div><span>Por toma</span><b>' + esc(x.por_toma) + '</b></div></div>' +
-    '<div class="clave">' + esc(x.por_que) + '</div>' + (x.ojo ? '<div class="aviso">' + esc(x.ojo) + '</div>' : "") +
-    '<a class="btn" href="' + esc(x.link) + '" target="_blank" rel="noopener">Comprar en ' + esc(x.tienda) + '</a>' +
-    (x.alt ? '<a class="alt" href="' + esc(x.alt.link) + '" target="_blank" rel="noopener">Otra opción: ' + esc(x.alt.n) + '</a>' : "") +
-    '<label class="chk"><input type="checkbox" data-compra="' + esc(x.id) + '"' + (ya ? " checked" : "") + '>Ya lo compré' + (ya && CP[x.id].f ? ' <span class="sub">· ' + fc(CP[x.id].f) + '</span>' : "") + '</label></div>';
+  return '<div class="compra' + (ya ? " ya" : "") + '"><b>' + esc(x.corto || x.n) + '</b> <span class="sub">' + esc(x.marca || "") + '</span>' +
+    '<div class="toma">' + esc(x.toma || x.cuando) + '</div><div class="sub">' + esc(x.precio_corto || x.precio) + '</div>' +
+    (x.ojo_corto ? '<div class="ojo">' + esc(x.ojo_corto) + '</div>' : "") +
+    '<div class="compra-a"><a class="btn" href="' + esc(x.link) + '" target="_blank" rel="noopener">Comprar</a>' +
+    '<label class="chk"><input type="checkbox" data-compra="' + esc(x.id) + '"' + (ya ? " checked" : "") + '>Comprado</label></div></div>';
 }
 function renderCompras() {
   var ls = (D && D.compras) || [];
-  if (!ls.length) { $("#v-compras").innerHTML = '<div class="card"><h2>Compras</h2><div class="sub">Todavía no hay investigaciones de compras.</div></div>'; return; }
+  if (!ls.length) { $("#v-compras").innerHTML = '<div class="card"><h2>Compras</h2><div class="sub">Todavía no hay nada por comprar.</div></div>'; return; }
+  // Solo lo que toca comprar ahora (Ignacio, 2026-10-17: "más cómodo a la vista, nada innecesario").
+  // Lo opcional, las fuentes y el detalle siguen en context/vida/compras.json.
   $("#v-compras").innerHTML = ls.map(function (l) {
-    var ahora = l.items.filter(function (x) { return x.prioridad !== "despues"; }), despues = l.items.filter(function (x) { return x.prioridad === "despues"; });
-    var n = ahora.filter(function (x) { return (CP[x.id] || {}).comprado; }).length;
-    return '<div class="card"><div class="sub">Investigado el ' + fc(l.fecha) + ' · ' + n + ' de ' + ahora.length + ' comprados</div><h2>' + esc(l.n) + '</h2><div class="foco">' + esc(l.resumen) + '</div></div>' +
-      '<div class="card"><div class="sub">Lo que toca comprar</div><h2>Comprar ahora</h2>' + ahora.map(compraHtml).join("") + '</div>' +
-      (l.tener_en_cuenta ? '<div class="card"><div class="sub">Antes y después de comprar</div><h2>Ten en cuenta</h2><ul class="tec">' + l.tener_en_cuenta.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul></div>' : "") +
-      (despues.length ? pliegue("compras-" + l.id, 'Después, opcional <span class="sub">· ' + despues.length + '</span>', despues.map(compraHtml).join(""), false) : "") +
-      (l.fuentes ? '<div class="card"><div class="sub">De dónde sale</div><h2>Fuentes</h2>' + l.fuentes.map(function (f) { return '<a class="alt" href="' + esc(f.link) + '" target="_blank" rel="noopener">' + esc(f.n) + '</a>'; }).join("") + '</div>' : "");
+    var xs = l.items.filter(function (x) { return x.prioridad !== "despues"; });
+    var n = xs.filter(function (x) { return (CP[x.id] || {}).comprado; }).length;
+    return '<div class="card"><div class="sub">' + n + ' de ' + xs.length + ' comprados' + (l.mes_total ? ' · ' + esc(l.mes_total) : "") + '</div><h2>' + esc(l.n) + '</h2>' +
+      xs.map(compraHtml).join("") +
+      (l.tener_en_cuenta_corto ? '<ul class="tec">' + l.tener_en_cuenta_corto.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul>' : "") + '</div>';
   }).join("");
   document.querySelectorAll("[data-compra]").forEach(function (c) {
     c.onchange = function () {
