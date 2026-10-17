@@ -100,6 +100,7 @@ button:disabled{opacity:.5}
 .area-h{font:700 13px/1 Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:22px 4px 0}
 .conecta{margin-top:6px}
 details.listo>summary{opacity:.6}
+button.repuse{margin-top:10px;padding:10px 14px;font-size:14px;background:var(--card2);color:var(--ink);border:1px solid var(--line)}
 .av{font-size:12px;font-weight:700;color:var(--warn);background:var(--warnbg);padding:2px 8px;border-radius:99px;white-space:nowrap}
 .compra.ya{opacity:.55}
 .compra>b{font-size:16.5px}
@@ -699,7 +700,8 @@ function compraHtml(x) {
     (x.aviso ? '<div class="aviso">' + esc(x.aviso) + '</div>' : "") +
     (x.ojo_corto ? '<div class="ojo">' + esc(x.ojo_corto) + '</div>' : "") +
     '<div class="compra-a"><a class="btn" href="' + esc(x.link) + '" target="_blank" rel="noopener">Comprar</a>' +
-    '<label class="chk"><input type="checkbox" data-compra="' + esc(x.id) + '"' + (ya ? " checked" : "") + '>Comprado</label></div></div>';
+    '<label class="chk"><input type="checkbox" data-compra="' + esc(x.id) + '"' + (ya ? " checked" : "") + '>Comprado</label></div>' +
+    (ya && x.reponer_cada_dias ? '<button class="repuse" data-repuse="' + esc(x.id) + '">Lo repuse hoy</button>' : "") + '</div>';
 }
 function renderCompras() {
   var ls = (D && D.compras) || [];
@@ -722,6 +724,14 @@ function renderCompras() {
   }).join("");
   document.querySelectorAll("details[data-compras] > summary").forEach(function (sm) {
     sm.onclick = function () { ABIERTO[sm.parentNode.dataset.compras] = !sm.parentNode.open; };
+  });
+  // Al volver a comprar un consumible, la fecha de compra se reinicia y el aviso de reponer se apaga (auditoría 2026-10-17).
+  document.querySelectorAll("[data-repuse]").forEach(function (b) {
+    b.onclick = function () {
+      var id = b.dataset.repuse, doc = {comprado: true, f: hoyISO()};
+      CP[id] = doc; renderCompras();
+      guardar("compras/" + id, doc, "Anotado: repuesto hoy");
+    };
   });
   document.querySelectorAll("[data-compra]").forEach(function (c) {
     c.onchange = function () {
