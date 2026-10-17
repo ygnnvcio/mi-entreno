@@ -100,6 +100,7 @@ button:disabled{opacity:.5}
 .area-h{font:700 13px/1 Inter,sans-serif;text-transform:uppercase;letter-spacing:.06em;color:var(--mut);margin:22px 4px 0}
 .conecta{margin-top:6px}
 details.listo>summary{opacity:.6}
+.av{font-size:12px;font-weight:700;color:var(--warn);background:var(--warnbg);padding:2px 8px;border-radius:99px;white-space:nowrap}
 .compra.ya{opacity:.55}
 .compra>b{font-size:16.5px}
 .toma{font-size:14.5px;margin-top:4px}
@@ -693,8 +694,9 @@ function renderAvance(hoy) {
 // Lo comprado se guarda en la colección "compras" de la API, con el id del producto como clave.
 function compraHtml(x) {
   var ya = !!(CP[x.id] || {}).comprado;
-  return '<div class="compra' + (ya ? " ya" : "") + '"><b>' + esc(x.corto || x.n) + '</b> <span class="sub">' + esc(x.marca || "") + '</span>' +
+  return '<div class="compra' + (ya ? " ya" : "") + '"><b>' + (x.cantidad > 1 ? x.cantidad + ' × ' : "") + esc(x.corto || x.n) + '</b> <span class="sub">' + esc(x.marca || "") + '</span>' +
     '<div class="toma">' + esc(x.toma || x.cuando) + '</div><div class="sub">' + esc(x.precio_corto || x.precio) + '</div>' +
+    (x.aviso ? '<div class="aviso">' + esc(x.aviso) + '</div>' : "") +
     (x.ojo_corto ? '<div class="ojo">' + esc(x.ojo_corto) + '</div>' : "") +
     '<div class="compra-a"><a class="btn" href="' + esc(x.link) + '" target="_blank" rel="noopener">Comprar</a>' +
     '<label class="chk"><input type="checkbox" data-compra="' + esc(x.id) + '"' + (ya ? " checked" : "") + '>Comprado</label></div></div>';
@@ -710,9 +712,10 @@ function renderCompras() {
     return '<div class="area-h">' + esc(a) + '</div>' + por[a].map(function (l) {
       var xs = l.items.filter(function (x) { return x.prioridad !== "despues"; });
       var n = xs.filter(function (x) { return (CP[x.id] || {}).comprado; }).length, k = "compra-" + l.id;
+      var av = xs.filter(function (x) { return x.aviso; }).length;
       var abierta = k in ABIERTO ? ABIERTO[k] : false;
       return '<details class="card pl' + (n === xs.length ? " listo" : "") + '" data-compras="' + k + '"' + (abierta ? " open" : "") + '><summary><span>' + esc(l.n) +
-        ' <span class="sub">· ' + (n === xs.length ? "comprado" : n + " de " + xs.length) + (l.mes_total ? " · " + esc(l.mes_total) : "") + '</span></span></summary><div class="pl-in">' +
+        ' <span class="sub">· ' + (n === xs.length ? "comprado" : n + " de " + xs.length) + (l.mes_total ? " · " + esc(l.mes_total) : "") + '</span>' + (av ? ' <span class="av">' + av + (av > 1 ? " avisos" : " aviso") + '</span>' : "") + '</span></summary><div class="pl-in">' +
         (l.conecta ? '<div class="sub conecta">' + esc(l.conecta) + '</div>' : "") + xs.map(compraHtml).join("") +
         (l.tener_en_cuenta_corto ? '<ul class="tec">' + l.tener_en_cuenta_corto.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul>' : "") + '</div></details>';
     }).join("");
