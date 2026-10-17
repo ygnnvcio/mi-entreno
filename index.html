@@ -96,6 +96,13 @@ button:focus-visible,summary:focus-visible{outline:2px solid var(--acc);outline-
 button:disabled{opacity:.5}
 .ok{color:var(--acc);font-size:13px;font-weight:600;margin-top:10px;display:flex;align-items:center;gap:6px}
 .ok::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--acc)}
+.compra{border-top:1px solid var(--line);padding:16px 0}.compra:first-of-type{border-top:0;padding-top:6px}
+.compra.ya{opacity:.6}
+.compra-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px}.compra-h b{font-size:16px;line-height:1.3}.compra-h span{flex:none;font:700 18px/1 "Barlow Condensed",sans-serif;color:var(--acc)}
+.compra .plan-t{margin-top:8px}.compra .plan-t div>b{white-space:normal;text-align:right;font-weight:600;font-size:13.5px}
+a.btn{display:block;text-align:center;text-decoration:none;font-weight:700;font-size:15px;border-radius:14px;padding:13px 16px;background:var(--acc);color:var(--acc-ink);margin-top:12px}
+a.alt{display:block;color:var(--acc);font-size:13.5px;font-weight:600;margin-top:10px;text-decoration:none}
+.tec{margin:8px 0 0;padding-left:20px}.tec li{margin:6px 0;font-size:14.5px}
 .aviso{background:var(--warnbg);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:13.5px;margin-top:10px;font-weight:500}
 .escala{display:flex;gap:4px;margin-top:6px}
 .escala label{flex:1;min-width:0;text-align:center;border:1px solid var(--line);background:var(--card2);border-radius:10px;padding:9px 0;font-weight:600;cursor:pointer}
@@ -204,11 +211,13 @@ details.card.pl>summary .sub{font-weight:500;font-size:14px}
 <main>
   <section id="v-hoy"><div class="cargando">Cargando tu día…</div></section>
   <section id="v-avance" hidden></section>
+  <section id="v-compras" hidden></section>
 </main>
 <div id="toast" class="toast" role="status"></div>
 <nav><div class="tabs">
   <button class="on" data-v="hoy"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Hoy</button>
   <button data-v="avance"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Mi avance</button>
+  <button data-v="compras"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6"/></svg>Compras</button>
 </div></nav>
 
 <script>
@@ -221,6 +230,7 @@ var TZ = "America/New_York";
 var DIAS_N = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 var D = null, SEL = null;
 var E = {}, C = {}, Z = {};   // entrenos, comidas y sueño por fecha
+var CP = {};   // compras: lo marcado como comprado, por id de producto
 
 function leerLlave() {
   var m = location.hash.match(/k=([^&]+)/), k = m ? decodeURIComponent(m[1]) : "";
@@ -424,6 +434,7 @@ function render() {
     pliegue("entreno", 'Entreno <span class="sub">· ' + esc(ent.join(" · ")) + '</span>', sesionHtml(sel, hoy), A.entreno) +
     pliegue("sueno", 'Sueño <span class="sub">· ' + (sz ? sz.horas + " h" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno) +
     pliegue("guia", 'Recetas y reglas', guiaHtml(), false);
+  renderCompras();
   enlazar(sel);
   renderAvance(hoy);
 }
@@ -548,7 +559,7 @@ function guiaHtml() {
 }
 
 // ---------------------------------------------------------------- Guardar
-function cachear() { try { localStorage.setItem("mientreno.d", JSON.stringify({app: D, entrenos: E, comidas: C, sueno: Z, plan: P})); } catch (e) { /* sin caché */ } }
+function cachear() { try { localStorage.setItem("mientreno.d", JSON.stringify({app: D, entrenos: E, comidas: C, sueno: Z, plan: P, compras: CP})); } catch (e) { /* sin caché */ } }
 // Guardado instantáneo: se ve al tiro y se sube por detrás (texto plano: sin permiso previo del navegador).
 function guardar(ruta, doc, msg, callado) {
   var p = ruta.split("/");
@@ -673,10 +684,45 @@ function renderAvance(hoy) {
     '<div class="card"><div class="sub">Historial</div><h2>Entrenos</h2>' + (historial || '<div class="sub">Todavía no hay entrenos guardados. Guarda el de hoy en la pestaña Hoy.</div>') + '</div>';
 }
 
+// ---------------------------------------------------------------- Compras
+// Investigaciones de cosas por comprar (context/vida/compras.json del Brain, pedido de Ignacio 2026-10-17).
+// Lo comprado se guarda en la colección "compras" de la API, con el id del producto como clave.
+function compraHtml(x) {
+  var ya = !!(CP[x.id] || {}).comprado;
+  return '<div class="compra' + (ya ? " ya" : "") + '"><div class="compra-h"><b>' + esc(x.n) + '</b><span>' + esc(x.mes) + '/mes</span></div>' +
+    '<div class="sub">' + esc(x.para) + '</div>' +
+    '<div class="plan-t"><div><span>Dosis</span><b>' + esc(x.dosis) + '</b></div><div><span>Cuándo</span><b>' + esc(x.cuando) + '</b></div>' +
+    '<div><span>Precio</span><b>' + esc(x.precio) + '</b></div><div><span>Por toma</span><b>' + esc(x.por_toma) + '</b></div></div>' +
+    '<div class="clave">' + esc(x.por_que) + '</div>' + (x.ojo ? '<div class="aviso">' + esc(x.ojo) + '</div>' : "") +
+    '<a class="btn" href="' + esc(x.link) + '" target="_blank" rel="noopener">Comprar en ' + esc(x.tienda) + '</a>' +
+    (x.alt ? '<a class="alt" href="' + esc(x.alt.link) + '" target="_blank" rel="noopener">Otra opción: ' + esc(x.alt.n) + '</a>' : "") +
+    '<label class="chk"><input type="checkbox" data-compra="' + esc(x.id) + '"' + (ya ? " checked" : "") + '>Ya lo compré' + (ya && CP[x.id].f ? ' <span class="sub">· ' + fc(CP[x.id].f) + '</span>' : "") + '</label></div>';
+}
+function renderCompras() {
+  var ls = (D && D.compras) || [];
+  if (!ls.length) { $("#v-compras").innerHTML = '<div class="card"><h2>Compras</h2><div class="sub">Todavía no hay investigaciones de compras.</div></div>'; return; }
+  $("#v-compras").innerHTML = ls.map(function (l) {
+    var ahora = l.items.filter(function (x) { return x.prioridad !== "despues"; }), despues = l.items.filter(function (x) { return x.prioridad === "despues"; });
+    var n = ahora.filter(function (x) { return (CP[x.id] || {}).comprado; }).length;
+    return '<div class="card"><div class="sub">Investigado el ' + fc(l.fecha) + ' · ' + n + ' de ' + ahora.length + ' comprados</div><h2>' + esc(l.n) + '</h2><div class="foco">' + esc(l.resumen) + '</div></div>' +
+      '<div class="card"><div class="sub">Lo que toca comprar</div><h2>Comprar ahora</h2>' + ahora.map(compraHtml).join("") + '</div>' +
+      (l.tener_en_cuenta ? '<div class="card"><div class="sub">Antes y después de comprar</div><h2>Ten en cuenta</h2><ul class="tec">' + l.tener_en_cuenta.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join("") + '</ul></div>' : "") +
+      (despues.length ? pliegue("compras-" + l.id, 'Después, opcional <span class="sub">· ' + despues.length + '</span>', despues.map(compraHtml).join(""), false) : "") +
+      (l.fuentes ? '<div class="card"><div class="sub">De dónde sale</div><h2>Fuentes</h2>' + l.fuentes.map(function (f) { return '<a class="alt" href="' + esc(f.link) + '" target="_blank" rel="noopener">' + esc(f.n) + '</a>'; }).join("") + '</div>' : "");
+  }).join("");
+  document.querySelectorAll("[data-compra]").forEach(function (c) {
+    c.onchange = function () {
+      var id = c.dataset.compra, doc = {comprado: c.checked, f: hoyISO()};
+      CP[id] = doc; renderCompras();
+      guardar("compras/" + id, doc, c.checked ? "Anotado como comprado" : "Quitado");
+    };
+  });
+}
+
 document.querySelectorAll("nav button").forEach(function (b) {
   b.onclick = function () {
     document.querySelectorAll("nav button").forEach(function (x) { x.classList.toggle("on", x === b); });
-    ["hoy", "avance"].forEach(function (v) { $("#v-" + v).hidden = v !== b.dataset.v; });
+    ["hoy", "avance", "compras"].forEach(function (v) { $("#v-" + v).hidden = v !== b.dataset.v; });
     window.scrollTo(0, 0);
   };
 });
@@ -690,7 +736,7 @@ function conFijo(app) {
   Object.keys(FIJO.recetas).forEach(function (id) { app.recetas[id] = FIJO.recetas[id]; });
   return app;
 }
-function cargar(d) { D = conFijo(d.app); E = d.entrenos || {}; C = d.comidas || {}; Z = d.sueno || {}; P = d.plan || {}; render(); }
+function cargar(d) { D = conFijo(d.app); E = d.entrenos || {}; C = d.comidas || {}; Z = d.sueno || {}; P = d.plan || {}; CP = d.compras || {}; render(); }
 function arrancar() {
   if (!K) { $("#fecha").textContent = ""; $("#v-hoy").innerHTML = '<div class="card">Abre el enlace con tu llave.</div>'; return; }
   var cache = null;
