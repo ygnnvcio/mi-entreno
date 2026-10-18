@@ -105,6 +105,7 @@ button.repuse{margin-top:10px;padding:10px 14px;font-size:14px;background:var(--
 .compra.ya{opacity:.55}
 .compra>b{font-size:16.5px}
 .toma{font-size:14.5px;margin-top:4px}
+.cuando{font-size:13.5px;margin-top:3px;padding-left:8px;border-left:2px solid currentColor;opacity:.85}
 .ojo{font-size:13px;font-weight:600;color:var(--warn);margin-top:4px}
 .compra-a{display:flex;align-items:center;gap:14px;margin-top:10px}.compra-a label.chk{padding:0;flex:none}
 a.btn{flex:1;display:block;text-align:center;text-decoration:none;font-weight:700;font-size:15px;border-radius:12px;padding:11px 14px;background:var(--acc);color:var(--acc-ink)}
@@ -701,7 +702,10 @@ function avisoDe(x) {
 function compraHtml(x) {
   var ya = !!(CP[x.id] || {}).comprado, av = avisoDe(x);
   return '<div class="compra' + (ya ? " ya" : "") + '"><b>' + (x.cantidad > 1 ? x.cantidad + ' × ' : "") + esc(x.corto || x.n) + '</b> <span class="sub">' + esc(x.marca || "") + '</span>' +
-    '<div class="toma">' + esc(x.toma || x.cuando) + '</div><div class="sub">' + esc(x.precio_corto || x.precio) + '</div>' +
+    '<div class="toma">' + esc(x.toma || x.cuando) + '</div>' +
+    // Cuándo comerlo o tomarlo, en su propia línea (Ignacio, 2026-10-17: "el mejor horario para comerlas e ingerirlas").
+    (x.toma && x.cuando ? '<div class="cuando">' + esc(x.cuando) + '</div>' : "") +
+    '<div class="sub">' + esc(x.precio_corto || x.precio) + '</div>' +
     (av ? '<div class="aviso">' + esc(av) + '</div>' : "") +
     (x.ojo_corto ? '<div class="ojo">' + esc(x.ojo_corto) + '</div>' : "") +
     '<div class="compra-a"><a class="btn" href="' + esc(x.link) + '" target="_blank" rel="noopener">Comprar</a>' +
