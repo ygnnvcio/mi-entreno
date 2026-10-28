@@ -51,7 +51,7 @@ h1,h2{font-family:"Barlow Condensed",Inter,sans-serif;letter-spacing:.01em;text-
 .kpis span{font-size:11px;color:rgba(255,255,255,.75)}
 
 main{padding-inline:16px;max-width:620px;margin:0 auto}
-.fijo-sueno{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.fijo-sueno span{color:var(--mut);font-size:12.5px;white-space:nowrap}
+.fijo-sueno{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.fijo-sueno span{color:var(--mut);font-size:12.5px;white-space:nowrap}.fijo-sueno .gym-n{color:var(--acc);font-size:inherit;font-weight:600}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin:14px 0;box-shadow:var(--shadow)}
 .card h2{font-size:24px;font-weight:700;margin:0 0 2px;text-transform:uppercase;line-height:1.1}
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
@@ -469,12 +469,20 @@ function semanaHtml(hoy, sel) {
 // a la llegada de la hermana y a Nueva York (context/vida/fechas.json).
 var FECHAS = /*FECHAS*/{"sin_fumar": "2026-10-27", "fechas": [{"fecha": "2026-12-20", "aprox": true, "que": "Llega tu hermana"}, {"fecha": "2027-01-02", "aprox": false, "que": "Nueva York"}]}/*FIN-FECHAS*/;
 var MESES_C = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+// Días de gym que quedan antes de una fecha (Ignacio, 2026-10-28: "los días que me quedan de entreno antes de que
+// llegue mi hermana"). Hoy cuenta mientras no esté entrenado; el día de la llegada no cuenta.
+function gymAntes(hoy, fin) {
+  var n = 0;
+  for (var f = hoy; f < fin; f = addDias(f, 1)) if (diaDe(f).tipo === "gym" && !(f === hoy && hecho(f))) n++;
+  return n;
+}
 function fechasLineas(hoy) {
   var sf = FECHAS.sin_fumar ? Math.round((dISO(hoy) - dISO(FECHAS.sin_fumar)) / 864e5) : -1;
   var fumar = sf >= 0 ? '<div class="fijo-sueno"><b>Sin fumar</b><span>día ' + sf + '</span></div>' : "";
   return fumar + FECHAS.fechas.filter(function (x) { return x.fecha >= hoy; }).map(function (x) {
     var n = Math.round((dISO(x.fecha) - dISO(hoy)) / 864e5), dia = (x.aprox ? "~" : "") + +x.fecha.slice(8) + "-" + MESES_C[+x.fecha.slice(5, 7) - 1];
-    return '<div class="fijo-sueno"><b>' + esc(x.que) + '</b><span>' + (n === 0 ? "es hoy" : (x.aprox ? "faltan ~" : "faltan ") + n + (n === 1 ? " día" : " días")) + ' · ' + dia + '</span></div>';
+    var gym = /hermana/i.test(x.que) && n > 0 ? ' <span class="gym-n">· ' + gymAntes(hoy, x.fecha) + ' días de gym</span>' : "";
+    return '<div class="fijo-sueno"><b>' + esc(x.que) + gym + '</b><span>' + (n === 0 ? "es hoy" : (x.aprox ? "faltan ~" : "faltan ") + n + (n === 1 ? " día" : " días")) + ' · ' + dia + '</span></div>';
   }).join("");
 }
 // Dormir arriba de todo y fijo (Ignacio, 2026-10-16); en Tu día ya no se repite.
