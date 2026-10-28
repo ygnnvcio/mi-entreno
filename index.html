@@ -51,7 +51,7 @@ h1,h2{font-family:"Barlow Condensed",Inter,sans-serif;letter-spacing:.01em;text-
 .kpis span{font-size:11px;color:rgba(255,255,255,.75)}
 
 main{padding-inline:16px;max-width:620px;margin:0 auto}
-.fijo-sueno{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.fijo-sueno span{color:var(--mut);font-size:12.5px}
+.fijo-sueno{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid var(--line)}.fijo-sueno span{color:var(--mut);font-size:12.5px;white-space:nowrap}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:18px;margin:14px 0;box-shadow:var(--shadow)}
 .card h2{font-size:24px;font-weight:700;margin:0 0 2px;text-transform:uppercase;line-height:1.1}
 .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
@@ -463,7 +463,19 @@ function semanaHtml(hoy, sel) {
   var ds = diaDe(sel), otro = sel !== hoy ? '<div class="foco"><b>' + DIAS_N[dow(sel)] + ' ' + fc(sel) + ': ' + esc(ds.n) + '</b><br><span>' +
     (ds.tipo === "libre" ? "Descanso total." : "La rutina queda abajo, plegada; ábrela cuando quieras.") + ' Toca Hoy para volver.</span></div>' : "";
   return '<div class="card" id="card-semana"><div class="sub">Tu semana · qué toca cada día</div><div class="semana7">' + out + '</div>' +
-    '<div class="leyenda"><span><i class="b-gym"></i>Gym</span><span><i class="b-suave"></i>Suave</span><span><i class="b-libre"></i>Libre</span><span>● entrenado</span></div>' + otro + dormirLinea() + '</div>';
+    '<div class="leyenda"><span><i class="b-gym"></i>Gym</span><span><i class="b-suave"></i>Suave</span><span><i class="b-libre"></i>Libre</span><span>● entrenado</span></div>' + otro + dormirLinea() + fechasLineas(hoy) + '</div>';
+}
+// Bajo Dormir (Ignacio, 2026-10-28): días sin fumar (dejar-fumar.json; día 0 = último cigarro) y cuenta regresiva
+// a la llegada de la hermana y a Nueva York (context/vida/fechas.json).
+var FECHAS = /*FECHAS*/{"sin_fumar": "2026-10-27", "fechas": [{"fecha": "2026-12-20", "aprox": true, "que": "Llega tu hermana"}, {"fecha": "2027-01-02", "aprox": false, "que": "Nueva York"}]}/*FIN-FECHAS*/;
+var MESES_C = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+function fechasLineas(hoy) {
+  var sf = FECHAS.sin_fumar ? Math.round((dISO(hoy) - dISO(FECHAS.sin_fumar)) / 864e5) : -1;
+  var fumar = sf >= 0 ? '<div class="fijo-sueno"><b>Sin fumar</b><span>día ' + sf + '</span></div>' : "";
+  return fumar + FECHAS.fechas.filter(function (x) { return x.fecha >= hoy; }).map(function (x) {
+    var n = Math.round((dISO(x.fecha) - dISO(hoy)) / 864e5), dia = (x.aprox ? "~" : "") + +x.fecha.slice(8) + "-" + MESES_C[+x.fecha.slice(5, 7) - 1];
+    return '<div class="fijo-sueno"><b>' + esc(x.que) + '</b><span>' + (n === 0 ? "es hoy" : (x.aprox ? "faltan ~" : "faltan ") + n + (n === 1 ? " día" : " días")) + ' · ' + dia + '</span></div>';
+  }).join("");
 }
 // Dormir arriba de todo y fijo (Ignacio, 2026-10-16); en Tu día ya no se repite.
 function dormirLinea() {
