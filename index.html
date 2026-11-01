@@ -302,6 +302,41 @@ nav button.on{background:var(--acc2)}
 .toast{border-radius:99px;bottom:calc(92px + env(safe-area-inset-bottom,0px))}
 .hdorm{display:flex;align-items:baseline;gap:10px;margin-top:10px;font-family:var(--f)}.hdorm b{font-size:15px;font-weight:700;color:var(--acc)}.hdorm span{font-size:13px;color:var(--mut)}
 #card-metas h2{margin-bottom:4px}#card-metas .fijo-sueno:first-of-type{border-top:0;margin-top:6px;padding-top:4px}
+/* WHOOP (2026-11-01): colores de recuperación con las bandas oficiales de WHOOP (verde 67-100, amarillo 34-66, rojo 0-33). */
+:root{--rec-g:#5cc98a;--rec-y:#e8c25a;--rec-r:#e8735f}
+.rec-g{color:var(--rec-g)}.rec-y{color:var(--rec-y)}.rec-r{color:var(--rec-r)}
+.wh-h{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.wh-h h2{margin:0}.wh-h .sub{white-space:nowrap}
+.wh-noche{position:relative;height:30px;margin:16px 0 6px;border-radius:99px;background:var(--card2);overflow:hidden}
+.wh-noche .meta-n{position:absolute;top:0;bottom:0;background:var(--acc2);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--acc) 45%,transparent);border-radius:99px}
+.wh-noche .real{position:absolute;top:8px;bottom:8px;background:var(--acc);border-radius:99px}
+.wh-ticks{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);padding:0 2px}
+.wh-vs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.wh-vs div{background:var(--card2);border-radius:14px;padding:10px 12px}
+.wh-vs span{display:block;font-size:12px;color:var(--mut)}
+.wh-vs b{font-size:22px;font-weight:600}
+.wh-vs em{font-style:normal;font-size:13px;font-weight:700;margin-left:6px}
+.wh-ok{color:var(--acc)}.wh-tarde{color:var(--warn)}
+.wh-etapas{display:flex;height:10px;border-radius:99px;overflow:hidden;margin-top:16px;gap:2px}
+.wh-etapas i{display:block;height:100%}
+.e-pro{background:var(--acc)}.e-rem{background:color-mix(in srgb,var(--acc) 60%,var(--card2))}.e-lig{background:color-mix(in srgb,var(--acc) 28%,var(--card2))}.e-des{background:var(--line)}
+.wh-ley{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:12.5px;color:var(--mut)}
+.wh-ley i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:0}
+.wh-ley b{color:var(--ink);font-weight:600}
+.wh-grande{font-size:44px;font-weight:300;line-height:1;letter-spacing:-.02em}
+.wh-racha{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.wh-racha div{background:var(--card2);border-radius:14px;padding:12px}
+.wh-racha span{display:block;font-size:12.5px;color:var(--mut);line-height:1.3}
+.wh-racha small{display:block;font-size:12px;color:var(--mut);margin-top:6px}
+.wh-grid{display:grid;grid-template-rows:repeat(7,auto);grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:3px;margin-top:14px}
+.wh-grid i{aspect-ratio:1;border-radius:5px;background:transparent;box-shadow:inset 0 0 0 1px var(--line)}
+.wh-grid i.si{background:var(--acc);box-shadow:none}
+.wh-grid i.no{background:color-mix(in srgb,var(--acc) 18%,var(--card2));box-shadow:none}
+.wh-grid i.hoy{outline:2px solid var(--ink);outline-offset:1px}
+.wh-grid i.fut{visibility:hidden}
+.wh-nota{font-size:12.5px;color:var(--mut);margin:14px 4px 0;line-height:1.45}
+a.btn.wh-con{display:block;margin-top:14px;padding:14px 16px}
+.wh-b{display:block;font-size:12px;color:var(--mut);font-weight:500}
 </style>
 </head>
 <body>
@@ -315,12 +350,14 @@ nav button.on{background:var(--acc2)}
   <section id="v-hoy"><div class="cargando">Cargando tu día…</div></section>
   <section id="v-avance" hidden></section>
   <section id="v-compras" hidden></section>
+  <section id="v-whoop" hidden></section>
 </main>
 <div id="toast" class="toast" role="status"></div>
 <nav><div class="tabs">
   <button class="on" data-v="hoy"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Today</button>
   <button data-v="avance"><svg viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Progress</button>
   <button data-v="compras"><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/><path d="M2 3h3l2.7 12.4a1 1 0 0 0 1 .8h9.6a1 1 0 0 0 1-.8L21 7H6"/></svg>Shopping</button>
+  <button data-v="whoop"><svg viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>WHOOP</button>
 </div></nav>
 
 <script>
@@ -335,6 +372,7 @@ function nom(d) { return d.en || d.n; }
 var D = null, SEL = null;
 var E = {}, C = {}, Z = {};   // entrenos, comidas y sueño por fecha
 var CP = {};   // compras: lo marcado como comprado, por id de producto
+var W = {}, WE = null;   // WHOOP: un documento por día de despertar (lo escribe Whoop.gs cada hora) y el estado de la conexión
 
 function leerLlave() {
   var m = location.hash.match(/k=([^&]+)/), k = m ? decodeURIComponent(m[1]) : "";
@@ -505,15 +543,15 @@ function cabecera(hoy) {
   var n = semanaN(hoy);
   $("#pct").textContent = n;
   $("#arco").style.strokeDashoffset = 201 - 201 * Math.min(1, n / 6);
-  var pr = protDe(hoy), comidas = C[hoy] && C[hoy].items ? C[hoy].items.length : 0, sz = Z[hoy];
-  $("#kpis").innerHTML = '<div><b>' + pr + '</b><span>g protein</span></div><div><b>' + comidas + '/5</b><span>meals</span></div><div><b>' + (sz ? sz.horas : "—") + '</b><span>h sleep</span></div>';
+  var pr = protDe(hoy), comidas = C[hoy] && C[hoy].items ? C[hoy].items.length : 0, sz = Z[hoy], wz = puntuado(hoy);
+  $("#kpis").innerHTML = '<div><b>' + pr + '</b><span>g protein</span></div><div><b>' + comidas + '/5</b><span>meals</span></div><div><b>' + (wz ? (Math.round(wz.sueno.dormido_h * 10) / 10) : sz ? sz.horas : "—") + '</b><span>h sleep</span></div>';
 }
 // Orden de Hoy (Roast Room 2026-10-15, opción C): arriba lo obligatorio y la agenda; se abre sola la tarjeta
 // que pide el bloque actual de la agenda (campo card en agenda.json), el resto va plegado y cada tarjeta cuenta sus aperturas.
 function activas(hoy) {
   var a = {}, ahora = minutos(horaLocal());
   ((D.agenda || {}).bloques || []).forEach(function (b) { if (b.card && b.card !== "entreno" && ahora >= minutos(b.h) && ahora < minutos(b.f)) a[b.card] = true; });
-  if (!Z[hoy] && ahora < minutos("12:00")) a.sueno = true;
+  if (!Z[hoy] && !puntuado(hoy) && ahora < minutos("12:00")) a.sueno = true;   // con WHOOP ya no se pide a mano
   if (D.fijo) a.comidas = true;   // platos fijos: apartado siempre a la vista (Ignacio, 2026-10-16)
   // El entreno no se abre solo (Ignacio, 2026-10-16): la rutina se mira cuando él la abre; tocar un día no la despliega.
   return a;
@@ -539,11 +577,12 @@ function render() {
   $("#v-hoy").innerHTML = sos + metasHtml(hoy) + mananaHtml(hoy) + semanaHtml(hoy, sel) +
     pliegue("entreno", 'Workout <span class="sub">· ' + esc(ent.join(" · ")) + '</span>', sesionHtml(sel, hoy), A.entreno) +
     pliegue("comidas", 'Meals', comidasHtml(hoy), A.comidas) + agendaHtml(hoy) +
-    pliegue("sueno", 'Sleep <span class="sub">· ' + (sz ? sz.horas + " h" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno) +
+    pliegue("sueno", 'Sleep <span class="sub">· ' + (sz ? sz.horas + " h" : puntuado(hoy) ? hm(puntuado(hoy).sueno.dormido_h) + " por WHOOP" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno) +
     pliegue("guia", 'Recipes & rules', guiaHtml(), false);
   renderCompras();
   enlazar(sel);
   renderAvance(hoy);
+  renderWhoop(hoy);
 }
 // Repinta solo la tarjeta que cambió: lo que estás escribiendo en el entreno no se pierde.
 function pintar(id) {
@@ -697,7 +736,7 @@ function guiaHtml() {
 }
 
 // ---------------------------------------------------------------- Guardar
-function cachear() { try { localStorage.setItem("mientreno.d", JSON.stringify({app: D, entrenos: E, comidas: C, sueno: Z, plan: P, compras: CP})); } catch (e) { /* sin caché */ } }
+function cachear() { try { localStorage.setItem("mientreno.d", JSON.stringify({app: D, entrenos: E, comidas: C, sueno: Z, plan: P, compras: CP, whoop: W, whoop_estado: WE})); } catch (e) { /* sin caché */ } }
 // Guardado instantáneo: se ve al tiro y se sube por detrás (texto plano: sin permiso previo del navegador).
 function guardar(ruta, doc, msg, callado) {
   var p = ruta.split("/");
@@ -822,6 +861,148 @@ function renderAvance(hoy) {
     '<div class="card"><div class="sub">Historial</div><h2>Workouts</h2>' + (historial || '<div class="sub">Todavía no hay entrenos guardados. Guarda el de hoy en la pestaña Hoy.</div>') + '</div>';
 }
 
+// ---------------------------------------------------------------- WHOOP
+// Datos de la API oficial de WHOOP (Whoop.gs, cada hora), un documento por día en que despertó (2026-11-01).
+// Para qué (Ignacio, 2026-10-29): ver cuánto duerme de verdad contra su meta 22:00-06:00 y "verme como en un juego".
+// Lo derivado (meta cumplida, promedio de 30 días, hora para acostarse) se calcula aquí y se rotula como tal.
+var WH_HOLGURA = 30;   // minutos de margen sobre la hora de dormir. Provisional: lo ajusta Ignacio
+var WH_REND = 85;      // rendimiento de sueño "Optimal" según WHOOP (support.whoop.com, WHOOP Sleep)
+function hm(h) { if (h == null) return "—"; var m = Math.round(h * 60); return Math.floor(m / 60) + "h " + ("0" + m % 60).slice(-2) + "m"; }
+function minNoche(t) { var m = minutos(t); return m < 12 * 60 ? m + 1440 : m; }   // 00:30 cuenta como 24:30 de la noche anterior
+function banda(s) { return s == null ? "" : s >= 67 ? "rec-g" : s >= 34 ? "rec-y" : "rec-r"; }
+function nivelSueno(p) { return p == null ? "" : p >= 85 ? "Optimal" : p >= 70 ? "Sufficient" : "Poor"; }
+function puntuado(f) { var w = W[f]; return w && w.sueno && w.sueno.estado === "SCORED" ? w : null; }
+function enMeta(f) {
+  var w = puntuado(f); if (!w) return null;
+  return minNoche(w.sueno.inicio) <= minutos(D.dormir || "22:00") + WH_HOLGURA && (w.sueno.rendimiento || 0) >= WH_REND;
+}
+function verde(f) { var w = W[f]; return w && w.recuperacion && w.recuperacion.score != null ? w.recuperacion.score >= 67 : null; }
+// Racha actual: hoy cuenta si ya está la noche; si todavía no llega, no la corta. Mejor racha: días seguidos en todo el historial.
+function rachas(fn, hoy) {
+  var act = 0, f = fn(hoy) == null ? addDias(hoy, -1) : hoy;
+  while (fn(f)) { act++; f = addDias(f, -1); }
+  var fs = Object.keys(W).sort(), mejor = 0, run = 0, prev = "";
+  fs.forEach(function (x) { if (fn(x)) { run = prev && addDias(prev, 1) === x ? run + 1 : 1; prev = x; mejor = Math.max(mejor, run); } else { run = 0; prev = ""; } });
+  return {act: act, mejor: Math.max(mejor, act)};
+}
+function base30(f, campo) {
+  var xs = [];
+  for (var i = 1; i <= 30; i++) { var w = W[addDias(f, -i)]; if (w && w.recuperacion && w.recuperacion[campo] != null) xs.push(w.recuperacion[campo]); }
+  return xs.length >= 7 ? xs.reduce(function (a, b) { return a + b; }, 0) / xs.length : null;
+}
+function vsBase(v, b, unidad) {
+  if (v == null || b == null) return '<small class="wh-b">promedio de 30 días: falta tener 7 noches</small>';
+  var d = Math.round((v - b) / b * 100);
+  return '<small class="wh-b">' + (d >= 0 ? "+" : "") + d + '% vs tu promedio de 30 días (' + Math.round(b) + ' ' + unidad + ', derivado)</small>';
+}
+function horaActualizada() {
+  if (!WE || !WE.ultima) return "";
+  return new Intl.DateTimeFormat("en-GB", {timeZone: TZ, weekday: "short", hour: "2-digit", minute: "2-digit"}).format(new Date(WE.ultima));
+}
+function conectarHtml(titulo, texto) {
+  return '<div class="card"><h2>' + titulo + '</h2><div class="sub" style="margin-top:6px">' + texto + '</div>' +
+    '<a class="btn wh-con" href="' + esc(API + "?api=whoop_conectar&k=" + encodeURIComponent(K)) + '" target="_blank" rel="noopener">Connect WHOOP</a></div>';
+}
+function nocheHtml(f, w) {
+  var s = w.sueno, ini = minNoche(s.inicio), fin = minNoche(s.fin) < ini ? minNoche(s.fin) + 1440 : minNoche(s.fin);
+  var A = 20 * 60, Z_ = 34 * 60, pct = function (m) { return Math.max(0, Math.min(100, (m - A) / (Z_ - A) * 100)); };   // eje de 20:00 a 10:00
+  var md = minNoche(D.dormir || "22:00"), mw = minutos(D.despertar || "06:00") + 1440;
+  var tarde = function (real, meta) { var d = real - meta; return '<em class="' + (d <= WH_HOLGURA ? "wh-ok" : "wh-tarde") + '">' + (d === 0 ? "on time" : (d > 0 ? "+" : "−") + Math.abs(d) + " min") + '</em>'; };
+  var puntos = s.estado === "SCORED";
+  var cab = puntos ? '<div class="wh-h"><h2>' + hm(s.dormido_h) + ' asleep</h2><span class="sub">' + (f === hoyISO() ? "Last night" : DIAS_N[dow(f)].slice(0, 3) + " " + fc(f)) + '</span></div>' +
+      '<div class="sub" style="margin-top:4px">' + (s.necesidad_h != null ? 'de ' + hm(s.necesidad_h) + ' que necesitabas · ' : "") +
+      (s.rendimiento != null ? '<b class="' + (s.rendimiento >= WH_REND ? "wh-ok" : "") + '">' + s.rendimiento + '% ' + nivelSueno(s.rendimiento) + '</b>' : "") + '</div>'
+    : '<div class="wh-h"><h2>Last night</h2><span class="sub">' + fc(f) + '</span></div><div class="sub" style="margin-top:4px">WHOOP todavía está calculando esta noche. Se completa sola en la próxima hora.</div>';
+  var barra = '<div class="wh-noche" role="img" aria-label="Dormiste de ' + esc(s.inicio) + ' a ' + esc(s.fin) + '; tu meta es ' + esc(D.dormir || "22:00") + ' a ' + esc(D.despertar || "06:00") + '">' +
+    '<i class="meta-n" style="left:' + pct(md) + '%;width:' + (pct(mw) - pct(md)) + '%"></i><i class="real" style="left:' + pct(ini) + '%;width:' + Math.max(1, pct(fin) - pct(ini)) + '%"></i></div>' +
+    '<div class="wh-ticks"><span>20</span><span>22</span><span>00</span><span>02</span><span>04</span><span>06</span><span>08</span><span>10</span></div>';
+  var vs = '<div class="wh-vs"><div><span>Bed · goal ' + esc(D.dormir || "22:00") + '</span><b>' + esc(s.inicio) + '</b>' + tarde(ini, md) + '</div>' +
+    '<div><span>Up · goal ' + esc(D.despertar || "06:00") + '</span><b>' + esc(s.fin) + '</b>' + tarde(fin, mw) + '</div></div>';
+  var etapas = "";
+  if (puntos && s.en_cama_h) {
+    var et = [["e-pro", "Deep", s.profundo_h], ["e-rem", "REM", s.rem_h], ["e-lig", "Light", s.ligero_h], ["e-des", "Awake", s.despierto_h]];
+    etapas = '<div class="wh-etapas">' + et.map(function (e) { return '<i class="' + e[0] + '" style="flex:' + (e[2] || 0) + '"></i>'; }).join("") + '</div>' +
+      '<div class="wh-ley">' + et.map(function (e) { return '<span><i class="' + e[0] + '"></i>' + e[1] + ' <b>' + hm(e[2]) + '</b></span>'; }).join("") + '</div>';
+  }
+  return '<div class="card">' + cab + barra + vs + etapas + '</div>';
+}
+function recuperacionHtml(f, w) {
+  var r = w.recuperacion, e = w.esfuerzo, filas = [];
+  if (!r || r.score == null) return "";
+  filas.push(['HRV', r.hrv + ' ms', vsBase(r.hrv, base30(f, "hrv"), "ms")]);
+  filas.push(['Resting heart rate', r.fc_reposo + ' bpm', vsBase(r.fc_reposo, base30(f, "fc_reposo"), "bpm")]);
+  if (w.sueno && w.sueno.resp != null) filas.push(['Respiratory rate', w.sueno.resp + ' rpm', ""]);
+  if (r.spo2 != null) filas.push(['Blood oxygen', r.spo2 + '%', ""]);
+  if (r.piel != null) filas.push(['Skin temperature', r.piel + ' °C', ""]);
+  if (e && e.strain != null) filas.push(['Day strain', e.strain + (e.en_curso ? ' <small class="sub">en curso</small>' : ""), e.kcal ? '<small class="wh-b">' + e.kcal + ' kcal</small>' : ""]);
+  var cal = r.calibrando ? '<div class="aviso">WHOOP todavía se está calibrando contigo (primeros días): la recuperación se afina sola.</div>' : "";
+  var ent = (w.entrenos || []).map(function (x) {
+    return '<div><span>' + esc(x.deporte.replace(/-/g, " ")) + ' <small>' + esc(x.inicio) + ' · ' + x.min + ' min' + (x.fc_prom ? ' · ' + x.fc_prom + ' bpm' : "") + '</small></span><b>' + (x.strain != null ? x.strain : "—") + '</b></div>';
+  }).join("");
+  return '<div class="card"><div class="wh-h"><h2>Recovery</h2><span class="sub">WHOOP</span></div>' +
+    '<div class="wh-grande ' + banda(r.score) + '" style="margin-top:8px">' + r.score + '%</div>' +
+    // Lectura de cada banda según WHOOP (developer.whoop.com/docs/whoop-101), para que el color no sea la única señal.
+    '<div class="sub" style="margin-top:4px">' + (r.score >= 67 ? "Green: bien recuperado, listo para exigirte" : r.score >= 34 ? "Yellow: aguantas un esfuerzo moderado" : "Red: hoy tu cuerpo pide descanso") + '</div>' + cal +
+    '<div class="plan-t" style="margin-top:10px">' + filas.map(function (x) { return '<div><span>' + x[0] + x[2] + '</span><b>' + x[1] + '</b></div>'; }).join("") + '</div>' +
+    (ent ? '<div class="wh-h" style="margin-top:16px"><b>Workouts</b><span class="sub">strain</span></div><div class="plan-t">' + ent + '</div>' : "") + '</div>';
+}
+function estaNocheHtml(w) {
+  var s = w.sueno;
+  if (!s || s.necesidad_h == null) return "";
+  var cama = s.necesidad_h / ((s.eficiencia || 90) / 100), m = ((minutos(D.despertar || "06:00") - Math.round(cama * 60)) % 1440 + 1440) % 1440;
+  var h = ("0" + Math.floor(m / 60)).slice(-2) + ":" + ("0" + m % 60).slice(-2);
+  return '<div class="card"><div class="wh-h"><h2>Tonight: in bed by ' + h + '</h2></div>' +
+    '<div class="sub" style="margin-top:6px">Para despertar a las ' + esc(D.despertar || "06:00") + ' con las ' + hm(s.necesidad_h) + ' que WHOOP dijo que necesitabas anoche y tu eficiencia de ' + (s.eficiencia || 90) + '%. Estimado.' +
+    (s.deuda_h ? ' Llevas ' + hm(s.deuda_h) + ' de deuda de sueño.' : "") + '</div></div>';
+}
+function juegoHtml(hoy) {
+  var m = rachas(enMeta, hoy), g = rachas(verde, hoy), ini = addDias(lunesDe(hoy), -77), celdas = "";
+  for (var i = 0; i < 84; i++) {
+    var f = addDias(ini, i), v = enMeta(f);
+    celdas += '<i class="' + (f > hoy ? "fut" : v ? "si" : v === false ? "no" : "") + (f === hoy ? " hoy" : "") + '" title="' + fc(f) + '"></i>';
+  }
+  var rec = {hrv: null, rec: null, dur: null};
+  Object.keys(W).forEach(function (f) {
+    var w = W[f];
+    if (w.recuperacion && w.recuperacion.hrv != null && (!rec.hrv || w.recuperacion.hrv > rec.hrv.v)) rec.hrv = {v: w.recuperacion.hrv, f: f};
+    if (w.recuperacion && w.recuperacion.score != null && (!rec.rec || w.recuperacion.score > rec.rec.v)) rec.rec = {v: w.recuperacion.score, f: f};
+    if (puntuado(f) && w.sueno.dormido_h != null && (!rec.dur || w.sueno.dormido_h > rec.dur.v)) rec.dur = {v: w.sueno.dormido_h, f: f};
+  });
+  var R = [["Best HRV", rec.hrv, function (v) { return v + " ms"; }], ["Best recovery", rec.rec, function (v) { return v + "%"; }], ["Longest sleep", rec.dur, hm]]
+    .filter(function (x) { return x[1]; }).map(function (x) { return '<div><span>' + x[0] + ' <small>' + fc(x[1].f) + '</small></span><b>' + x[2](x[1].v) + '</b></div>'; }).join("");
+  return '<div class="card"><div class="wh-h"><h2>Streaks</h2></div>' +
+    '<div class="wh-racha"><div><span>Noches en meta</span><b class="wh-grande">' + m.act + '</b><small>mejor: ' + m.mejor + '</small></div>' +
+    '<div><span>Recuperación verde</span><b class="wh-grande rec-g">' + g.act + '</b><small>mejor: ' + g.mejor + '</small></div></div>' +
+    '<div class="wh-grid" role="img" aria-label="Últimas 12 semanas: cada cuadro es una noche; lleno si fue en meta">' + celdas + '</div>' +
+    '<div class="wh-ley"><span><i class="e-pro"></i>En meta</span><span><i style="background:color-mix(in srgb,var(--acc) 18%,var(--card2))"></i>Fuera de meta</span><span><i style="box-shadow:inset 0 0 0 1px var(--line)"></i>Sin dato</span></div>' +
+    '<div class="sub" style="margin-top:10px">En meta = a la cama antes de las ' + (function () { var x = minutos(D.dormir || "22:00") + WH_HOLGURA; return ("0" + Math.floor(x / 60) % 24).slice(-2) + ":" + ("0" + x % 60).slice(-2); })() +
+    ' y sueño Optimal de WHOOP (' + WH_REND + '% o más). Regla provisional: dime si la cambias.</div>' +
+    (R ? '<div class="wh-h" style="margin-top:16px"><b>Records</b></div><div class="plan-t">' + R + '</div>' : "") + '</div>';
+}
+function semanaWhoopHtml(hoy) {
+  var filas = "";
+  for (var i = 0; i < 7; i++) {
+    var f = addDias(hoy, -i), w = W[f];
+    if (!w || !w.sueno) continue;
+    var r = w.recuperacion && w.recuperacion.score, s = w.sueno;
+    filas += '<div class="dia"><div class="punto ' + banda(r) + '" style="background:var(--card2)">' + (r != null ? r : "—") + '</div><div class="d"><b>' + DIAS_N[dow(f)].slice(0, 3) + ' ' + fc(f) + '</b>' +
+      '<div class="sub">' + (s.estado === "SCORED" ? hm(s.dormido_h) : "calculando") + ' · bed ' + esc(s.inicio) + (w.recuperacion && w.recuperacion.hrv != null ? ' · HRV ' + w.recuperacion.hrv : "") + '</div></div>' +
+      '<div class="r">' + (enMeta(f) ? '<b class="wh-ok">en meta</b>' : s.rendimiento != null ? s.rendimiento + '%' : "") + '</div></div>';
+  }
+  return filas ? '<div class="card"><div class="wh-h"><h2>Last 7 nights</h2><span class="sub">recovery · sleep</span></div>' + filas + '</div>' : "";
+}
+function renderWhoop(hoy) {
+  var el = $("#v-whoop"), est = WE || {};
+  if (!est.conectado) { el.innerHTML = conectarHtml("Connect WHOOP", "Un solo paso: entras a WHOOP y le das permiso de lectura a esta app. Después tu sueño, recuperación y esfuerzo llegan solos cada hora."); return; }
+  var fs = Object.keys(W).filter(function (f) { return W[f].sueno; }).sort(), f = fs[fs.length - 1];
+  var pie = '<div class="wh-nota">' + (horaActualizada() ? 'Actualizado ' + esc(horaActualizada()) + ' · se sincroniza cada hora. ' : "") +
+    'WHOOP no entrega por su API el estrés, el VO2 max ni el journal.</div>';
+  var err = est.error ? (/token|sin conectar/i.test(est.error) ? conectarHtml("Reconnect WHOOP", "WHOOP dejó de aceptar la conexión (" + esc(est.error) + "). Vuelve a darle permiso.")
+    : '<div class="card"><div class="aviso" style="margin-top:0">La última lectura de WHOOP falló: ' + esc(est.error) + '. Se reintenta sola cada hora.</div></div>') : "";
+  if (!f) { el.innerHTML = err + '<div class="card"><h2>WHOOP connected</h2><div class="sub" style="margin-top:6px">Todavía no llega ninguna noche. La primera lectura trae hasta un año; vuelve en unos minutos.</div></div>' + pie; return; }
+  el.innerHTML = err + nocheHtml(f, W[f]) + recuperacionHtml(f, W[f]) + estaNocheHtml(W[f]) + juegoHtml(hoy) + semanaWhoopHtml(hoy) + pie;
+}
+
 // ---------------------------------------------------------------- Compras
 // Investigaciones de cosas por comprar (context/vida/compras.json del Brain, pedido de Ignacio 2026-10-17).
 // Lo comprado se guarda en la colección "compras" de la API, con el id del producto como clave.
@@ -885,7 +1066,7 @@ function renderCompras() {
 document.querySelectorAll("nav button").forEach(function (b) {
   b.onclick = function () {
     document.querySelectorAll("nav button").forEach(function (x) { x.classList.toggle("on", x === b); });
-    ["hoy", "avance", "compras"].forEach(function (v) { $("#v-" + v).hidden = v !== b.dataset.v; });
+    ["hoy", "avance", "compras", "whoop"].forEach(function (v) { $("#v-" + v).hidden = v !== b.dataset.v; });
     window.scrollTo(0, 0);
   };
 });
@@ -899,7 +1080,7 @@ function conFijo(app) {
   Object.keys(FIJO.recetas).forEach(function (id) { app.recetas[id] = FIJO.recetas[id]; });
   return app;
 }
-function cargar(d) { D = conFijo(d.app); E = d.entrenos || {}; C = d.comidas || {}; Z = d.sueno || {}; P = d.plan || {}; CP = d.compras || {}; render(); }
+function cargar(d) { D = conFijo(d.app); E = d.entrenos || {}; C = d.comidas || {}; Z = d.sueno || {}; P = d.plan || {}; CP = d.compras || {}; W = d.whoop || {}; WE = d.whoop_estado || null; render(); }
 function arrancar() {
   if (!K) { $("#fecha").textContent = ""; $("#v-hoy").innerHTML = '<div class="card">Abre el enlace con tu llave.</div>'; return; }
   var cache = null;
