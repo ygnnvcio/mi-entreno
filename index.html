@@ -471,7 +471,12 @@ function addDias(f, n) { var d = dISO(f); d.setUTCDate(d.getUTCDate() + n); retu
 function dow(f) { return dISO(f).getUTCDay(); }
 function lunesDe(f) { return addDias(f, -((dow(f) + 6) % 7)); }
 function fc(f) { return +f.slice(8) + "/" + f.slice(5, 7); }
-function diaDe(f) { var w = dow(f); return D.rutina.dias.filter(function (d) { return d.dow === w; })[0]; }
+function diaDe(f) {
+  var w = dow(f), d = D.rutina.dias.filter(function (d) { return d.dow === w; })[0];
+  // Día en casa (casa_fechas): cada ejercicio usa su versión "casa" con el mismo tier; el estándar del gym no cambia.
+  if (!d || (D.rutina.casa_fechas || []).indexOf(f) < 0) return d;
+  return Object.assign({}, d, { lugar: d.lugar_casa || d.lugar, ej: d.ej.map(function (x) { return x.casa ? Object.assign({}, x, x.casa) : x; }) });
+}
 function corto(d) { return d.tipo === "libre" ? "Rest" : nom(d).split(" ")[0].replace("Recovery", "Recov.").replace("Athletics", "Athl."); }
 function esFuerza(d, x) { return d.tipo === "gym" && (x.peso === true || (x.peso !== false && !/ s\b|min| m\b/.test(x.sr))); }
 function hecho(f) { var e = E[f]; return !!(e && e.items && e.items.some(function (x) { return x.hecho; })); }
