@@ -280,17 +280,17 @@ nav button{color:#4d5057;text-transform:uppercase;letter-spacing:.12em;font-size
 .toast{border-radius:2px}
 .semana7 button,.op,.horas button,.tl-c,.escala label{text-transform:none;letter-spacing:0;font-size:inherit}
 .semana7 button{font-size:11px}.semana7 .t{font-size:10.5px}
-#card-manana details.plan>summary{font-family:Manrope,sans-serif;text-transform:uppercase;letter-spacing:.07em;font-size:19px}
-#card-manana details.plan>summary .sub{font:500 11px Manrope,sans-serif;text-transform:none;letter-spacing:0}
+#card-manana details.plan>summary,#card-noche details.plan>summary{font-family:Manrope,sans-serif;text-transform:uppercase;letter-spacing:.07em;font-size:19px}
+#card-manana details.plan>summary .sub,#card-noche details.plan>summary .sub{font:500 11px Manrope,sans-serif;text-transform:none;letter-spacing:0}
 /* Tipografía (Ignacio, 2026-10-28: las letras condensadas y monoespaciadas "se ven pobres"): Manrope en todo,
    títulos en peso medio sin mayúsculas, cifras finas y tabulares, mayúsculas espaciadas solo en etiquetas chicas. */
 body{font-family:Manrope,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-feature-settings:"tnum" 1}
-h1,h2,.hero h1,.card h2,details.card.pl>summary,#card-manana details.plan>summary,.fijo-sueno b{text-transform:none;letter-spacing:-.01em}
+h1,h2,.hero h1,.card h2,details.card.pl>summary,#card-manana details.plan>summary,#card-noche details.plan>summary,.fijo-sueno b{text-transform:none;letter-spacing:-.01em}
 .hero h1{font-size:34px;font-weight:600;letter-spacing:-.025em}
 .card h2{font-size:20px;font-weight:600}
-details.card.pl>summary,#card-manana details.plan>summary{font-size:17px;font-weight:600}
+details.card.pl>summary,#card-manana details.plan>summary,#card-noche details.plan>summary{font-size:17px;font-weight:600}
 .fijo-sueno b{font-size:15px;font-weight:600}
-.fijo-sueno span,details.card.pl>summary .sub,#card-manana details.plan>summary .sub,.hpill{font-size:12.5px;font-weight:500;letter-spacing:0}
+.fijo-sueno span,details.card.pl>summary .sub,#card-manana details.plan>summary .sub,#card-noche details.plan>summary .sub,.hpill{font-size:12.5px;font-weight:500;letter-spacing:0}
 .hero .sub,.card>.sub:first-child,.card-top .sub,.leyenda,.kpis span,.anillo span,nav button{font-size:10.5px;font-weight:600;letter-spacing:.16em}
 .kpis b,.anillo b,.semana7 b,.meta b,.slot-h .hora,.tl-h,.op .m,.run-top b,.run-seg{font-weight:300;letter-spacing:-.01em}
 .kpis b{font-size:26px}.anillo b{font-size:26px}.semana7 b{font-size:18px;font-weight:400}
@@ -298,7 +298,7 @@ button,a.btn{font-weight:700;letter-spacing:.12em;font-size:12px}
 .num,.punto{font-weight:500}
 /* Redondo y suave (Ignacio, 2026-10-28: "demasiado lineal, no es tan redondo"); letra Nunito, elegida entre Nunito, Outfit y Plus Jakarta Sans. */
 :root{--r:20px;--f:Nunito,sans-serif}
-body,h1,h2,button,input,.hero .sub,.kpis b,.kpis span,.anillo b,.anillo span,.semana7 b,.meta b,.slot-h .hora,.tl-h,.op .m,.run-top b,.run-seg,.chip,.num,.punto,.leyenda,.fijo-sueno b,.fijo-sueno span,details.card.pl>summary,details.card.pl>summary .sub,#card-manana details.plan>summary,#card-manana details.plan>summary .sub,.hpill,nav button,.card>.sub:first-child,.card-top .sub{font-family:var(--f)}
+body,h1,h2,button,input,.hero .sub,.kpis b,.kpis span,.anillo b,.anillo span,.semana7 b,.meta b,.slot-h .hora,.tl-h,.op .m,.run-top b,.run-seg,.chip,.num,.punto,.leyenda,.fijo-sueno b,.fijo-sueno span,details.card.pl>summary,details.card.pl>summary .sub,#card-manana details.plan>summary,#card-noche details.plan>summary,#card-manana details.plan>summary .sub,#card-noche details.plan>summary .sub,.hpill,nav button,.card>.sub:first-child,.card-top .sub{font-family:var(--f)}
 .card{border-radius:22px;border:0;background:var(--card)}
 .kpis div{border-radius:18px;border:0;border-top:0;background:var(--card)}
 .kpis b{font-weight:500}
@@ -509,7 +509,7 @@ function anclas() {
   var mac = {h: m.h, f: m.f, n: "MacBook: los negocios primero", t: "mac", nota: "Con pausas para comer. Cómo repartes ese tiempo es tuyo"};
   bloquesDe().forEach(function (b) {
     if (ESENCIAL.indexOf(b.t) < 0 || /^dormir/i.test(b.n)) return;   // dormir va arriba, en la semana
-    if (conTarjeta(b) && minutos(b.h) >= minutos(m.h)) return;   // la mañana va entera, en orden (Ignacio, 2026-11-05); después de la MacBook, comidas y gym solo en su tarjeta
+    if (conTarjeta(b) && b.card !== "noche" && minutos(b.h) >= minutos(m.h)) return;   // la mañana va entera, en orden (Ignacio, 2026-11-05); después de la MacBook, comidas y gym solo en su tarjeta
     if (!puesta && minutos(b.h) >= minutos(m.h)) { out.push(mac); puesta = true; }
     out.push(b);
   });
@@ -553,7 +553,7 @@ function ahoraSigue(hoy) {
   var xs = [{h: m.h, f: m.f, n: "MacBook", mac: true}];
   bloquesDe(hoy).forEach(function (b) {
     var n = b.n;
-    if (b.card === "manana") n = D.agenda.manana ? D.agenda.manana.titulo : n;
+    if (b.card === "manana" || b.card === "noche") n = D.agenda[b.card] ? D.agenda[b.card].titulo : n;
     else if (b.t === "comida") n = ((D.comidas || [])[b.slot] || {}).n || n;
     else if (b.t === "gym") { if (d.tipo === "libre") return; n = "Gym"; }
     else if (/perro/i.test(n)) n = "Sacar al perro";
@@ -572,14 +572,22 @@ function ahoraSigue(hoy) {
 
 // Rutina de mañana como rutina de Hevy: tarjeta con resumen y un botón Empezar; al empezar, un paso a la vez
 // a pantalla de tarjeta, con reloj grande, "Hecho" que avanza solo y el paso siguiente a la vista.
-var RUN = null, tInt = null;   // {i, fin}: paso actual y fin del tope de 15 min
-function mananaDoc(hoy) { var doc = P[hoy] || (P[hoy] = {fecha: hoy}); doc.manana = doc.manana || []; return doc; }
-function mananaHtml(hoy) {
-  if (!D.agenda || !D.agenda.manana) return "";
-  var M = D.agenda.manana, m = (P[hoy] || {}).manana || [], n = m.filter(Boolean).length, N = M.pasos.length;
-  if (RUN) {
+var RUN = null, tInt = null;   // {k, i, fin}: rutina (manana o noche), paso actual y fin del tope
+// Dos rutinas con el mismo formato: la de la mañana y el recovery de la noche (Ignacio, 2026-11-05).
+var RUT = {
+  manana: {en: "Morning routine", hora: function () { return "despertar " + (D.despertar || "06:00"); }, abre: function () { return "Despertar " + (D.despertar || "06:00") + " · así parte el día"; },
+    fin: "Cuerpo activado", tope: "Se acabó el tiempo. A desayunar", temprano: function (n, N) { return n < N && minutos(horaLocal()) < minutos("12:00"); }},
+  noche: {en: "Night recovery", hora: function () { return "aparatos fuera " + (D.agenda.noche.desde || "21:30"); }, abre: function () { return "Aparatos fuera " + (D.agenda.noche.desde || "21:30") + " · así cierra el día"; },
+    fin: "Listo. A la cama", tope: "Se acabó el tiempo. A la cama", temprano: function (n, N) { var a = minutos(horaLocal()); return n < N && a >= minutos("21:00") && a < minutos("23:59"); }}
+};
+function rutinaDoc(hoy, k) { var doc = P[hoy] || (P[hoy] = {fecha: hoy}); doc[k] = doc[k] || []; return doc; }
+function mananaHtml(hoy) { return rutinaHtml(hoy, "manana"); }
+function rutinaHtml(hoy, k) {
+  if (!D.agenda || !D.agenda[k]) return "";
+  var M = D.agenda[k], R = RUT[k], m = (P[hoy] || {})[k] || [], n = m.filter(Boolean).length, N = M.pasos.length, id = "card-" + k;
+  if (RUN && RUN.k === k) {
     var x = M.pasos[RUN.i], prox = M.pasos[RUN.i + 1];
-    return '<div class="card run" id="card-manana"><div class="run-top"><span>Paso ' + (RUN.i + 1) + ' de ' + N + '</span><b id="t-reloj">--:--</b></div>' +
+    return '<div class="card run" id="' + id + '"><div class="run-top"><span>Paso ' + (RUN.i + 1) + ' de ' + N + '</span><b id="t-reloj">--:--</b></div>' +
       '<div class="barra"><i style="width:' + Math.round(100 * RUN.i / N) + '%"></i></div>' +
       '<h2 class="run-n">' + esc(x.n) + '</h2><div class="run-d">' + esc(x.d) + '</div>' +
       (x.seg ? '<div class="run-seg" id="t-paso">' + Math.floor(x.seg / 60) + ':' + ("0" + x.seg % 60).slice(-2) + '</div>' : "") +
@@ -587,17 +595,17 @@ function mananaHtml(hoy) {
       '<div class="run-pie"><button class="sec" id="b-saltar">Saltar</button><button class="sec" id="b-parar">Parar</button></div>' +
       (prox ? '<div class="sub run-sig">Sigue: ' + esc(prox.n) + '</div>' : "") + '</div>';
   }
-  // Así parte el día (Ignacio, 2026-10-16): abierta hasta que la haces o hasta mediodía; después queda plegada.
-  var temprano = !!activas(hoy).manana || (n < N && minutos(horaLocal()) < minutos("12:00"));
-  if ("manana" in ABIERTO) temprano = false;
+  // Así parte (o cierra) el día (Ignacio, 2026-10-16): abierta en su hora hasta que la haces; fuera de ella, plegada.
+  var temprano = !!activas(hoy)[k] || R.temprano(n, N);
+  if (k in ABIERTO) temprano = false;
   var resumen = '<div class="sub">' + esc(M.pasos.map(function (x) { return x.n; }).join(" · ")) + '</div>';
-  var cuerpo = resumen + '<button id="b-empezar">' + (n === N ? "Hecha. Repetir" : n ? "Seguir (" + n + " de " + N + ")" : "Empezar " + M.min + " min") + '</button>' +
+  var cuerpo = resumen + '<button data-empezar="' + k + '">' + (n === N ? "Hecha. Repetir" : n ? "Seguir (" + n + " de " + N + ")" : "Empezar " + M.min + " min") + '</button>' +
     '<details class="plan"><summary>Detalle y fuentes</summary><ol class="plan-l">' + M.pasos.map(function (x, i) {
       return '<li>' + (m[i] ? "<s>" : "") + '<b>' + esc(x.n) + '</b>: ' + esc(x.d) + (m[i] ? "</s>" : "") + '<br><small class="sub">' + esc(x.fuente) + '</small></li>';
     }).join("") + '</ol><div class="sub">' + esc(M.regla) + '. ' + esc(M.alarma) + '.</div></details>';
-  var tit = esc(M.en || "Morning routine") + ' <span class="sub">· ' + n + ' de ' + N + '</span>', desp = esc(D.despertar || "06:00");
-  if (temprano) return '<div class="card" id="card-manana"><div class="sub">Despertar ' + desp + ' · así parte el día</div><h2>' + tit + '</h2>' + cuerpo + '</div>';
-  return '<div class="card" id="card-manana"><details class="plan" data-card="manana" style="margin-top:0;border-top:0;padding-top:0"' + (ABIERTO.manana ? " open" : "") + '><summary><span>' + esc(M.en || "Morning routine") + ' <span class="sub">· despertar ' + desp + ' · ' + n + ' de ' + N + '</span></span></summary>' + cuerpo + '</details></div>';
+  var tit = esc(M.en || R.en) + ' <span class="sub">· ' + n + ' de ' + N + '</span>';
+  if (temprano) return '<div class="card" id="' + id + '"><div class="sub">' + esc(R.abre()) + '</div><h2>' + tit + '</h2>' + cuerpo + '</div>';
+  return '<div class="card" id="' + id + '"><details class="plan" data-card="' + k + '" style="margin-top:0;border-top:0;padding-top:0"' + (ABIERTO[k] ? " open" : "") + '><summary><span>' + esc(M.en || R.en) + ' <span class="sub">· ' + esc(R.hora()) + ' · ' + n + ' de ' + N + '</span></span></summary>' + cuerpo + '</details></div>';
 }
 function reloj(ms) { var r = Math.max(0, Math.round(ms / 1000)); return Math.floor(r / 60) + ":" + ("0" + r % 60).slice(-2); }
 function tic() {
@@ -606,17 +614,17 @@ function tic() {
   if (el) el.textContent = reloj(RUN.fin - ahora);
   var ps = $("#t-paso");
   if (ps && RUN.finPaso) { ps.textContent = reloj(RUN.finPaso - ahora); if (ahora >= RUN.finPaso && !RUN.avisado) { RUN.avisado = true; ps.classList.add("ok"); if (navigator.vibrate) navigator.vibrate(300); } }
-  if (ahora >= RUN.fin) { terminarRun("Se acabaron los 15 min. A desayunar"); }
+  if (ahora >= RUN.fin) { terminarRun(RUT[RUN.k].tope); }
 }
-function pasoActual() { var x = D.agenda.manana.pasos[RUN.i]; RUN.finPaso = x.seg ? Date.now() + x.seg * 1000 : 0; RUN.avisado = false; }
-function terminarRun(msg) { clearInterval(tInt); tInt = null; RUN = null; if (navigator.vibrate) navigator.vibrate([300, 150, 300]); aviso(msg, true); pintarManana(); }
-function pintarManana() { var el = $("#card-manana"); if (el) { el.outerHTML = mananaHtml(hoyISO()); enlazar(SEL || hoyISO()); tic(); } }
+function pasoActual() { var x = D.agenda[RUN.k].pasos[RUN.i]; RUN.finPaso = x.seg ? Date.now() + x.seg * 1000 : 0; RUN.avisado = false; }
+function terminarRun(msg) { var k = RUN ? RUN.k : "manana"; clearInterval(tInt); tInt = null; RUN = null; if (navigator.vibrate) navigator.vibrate([300, 150, 300]); aviso(msg, true); pintarRutina(k); }
+function pintarRutina(k) { var el = $("#card-" + k); if (el) { el.outerHTML = rutinaHtml(hoyISO(), k); enlazar(SEL || hoyISO()); tic(); } }
 function avanzar(marcar) {
-  var hoy = hoyISO(), doc = mananaDoc(hoy), N = D.agenda.manana.pasos.length;
-  if (marcar) { doc.manana[RUN.i] = true; doc.actualizado = new Date().toISOString(); guardar("plan/" + hoy, doc, "Hecho"); }
-  var i = RUN.i + 1; while (i < N && doc.manana[i]) i++;
-  if (i >= N) { terminarRun(doc.manana.filter(Boolean).length === N ? "Cuerpo activado" : "Terminado"); return; }
-  RUN.i = i; pasoActual(); pintarManana();
+  var hoy = hoyISO(), k = RUN.k, doc = rutinaDoc(hoy, k), N = D.agenda[k].pasos.length;
+  if (marcar) { doc[k][RUN.i] = true; doc.actualizado = new Date().toISOString(); guardar("plan/" + hoy, doc, "Hecho"); }
+  var i = RUN.i + 1; while (i < N && doc[k][i]) i++;
+  if (i >= N) { terminarRun(doc[k].filter(Boolean).length === N ? RUT[k].fin : "Terminado"); return; }
+  RUN.i = i; pasoActual(); pintarRutina(k);
 }
 
 // ---------------------------------------------------------------- Hoy
@@ -664,7 +672,7 @@ function render() {
   // cabecera, el sí o sí), después tus metas y luego el día en orden de reloj: mañana, semana con su entreno, comidas, agenda.
   $("#v-hoy").innerHTML = sos + metasHtml(hoy) + mananaHtml(hoy) + semanaHtml(hoy, sel) +
     pliegue("entreno", 'Workout <span class="sub">· ' + esc(ent.join(" · ")) + '</span>', sesionHtml(sel, hoy), A.entreno) +
-    pliegue("comidas", 'Meals', comidasHtml(hoy), A.comidas) + agendaHtml(hoy) +
+    pliegue("comidas", 'Meals', comidasHtml(hoy), A.comidas) + agendaHtml(hoy) + rutinaHtml(hoy, "noche") +
     pliegue("sueno", 'Sleep <span class="sub">· ' + (sz ? sz.horas + " h" : puntuado(hoy) ? hm(puntuado(hoy).sueno.dormido_h) + " por WHOOP" : "sin anotar") + '</span>', suenoHtml(hoy), A.sueno) +
     pliegue("guia", 'Recipes & rules', guiaHtml(), false);
   enlazar(sel);
@@ -897,18 +905,19 @@ function enlazar(sel) {
       guardar("plan/" + hoy, doc, "", true);
     };
   });
-  var bm = $("#b-empezar");
-  if (bm) bm.onclick = function () {
-    var doc = mananaDoc(hoyISO()), N = D.agenda.manana.pasos.length;
-    if (doc.manana.filter(Boolean).length === N) doc.manana = [];
-    var i = 0; while (i < N && doc.manana[i]) i++;
-    RUN = {i: i, fin: Date.now() + D.agenda.manana.min * 60000}; pasoActual();
-    clearInterval(tInt); tInt = setInterval(tic, 1000); pintarManana();
-    var c = $("#card-manana"); if (c) c.scrollIntoView({behavior: "smooth", block: "start"});
-  };
+  document.querySelectorAll("[data-empezar]").forEach(function (bm) {
+    bm.onclick = function () {
+      var k = bm.dataset.empezar, doc = rutinaDoc(hoyISO(), k), N = D.agenda[k].pasos.length;
+      if (doc[k].filter(Boolean).length === N) doc[k] = [];
+      var i = 0; while (i < N && doc[k][i]) i++;
+      RUN = {k: k, i: i, fin: Date.now() + D.agenda[k].min * 60000}; pasoActual();
+      clearInterval(tInt); tInt = setInterval(tic, 1000); pintarRutina(k);
+      var c = $("#card-" + k); if (c) c.scrollIntoView({behavior: "smooth", block: "start"});
+    };
+  });
   var bh = $("#b-hecho"); if (bh) bh.onclick = function () { avanzar(true); };
   var bs = $("#b-saltar"); if (bs) bs.onclick = function () { avanzar(false); };
-  var bp = $("#b-parar"); if (bp) bp.onclick = function () { clearInterval(tInt); tInt = null; RUN = null; pintarManana(); };
+  var bp = $("#b-parar"); if (bp) bp.onclick = function () { var k = RUN ? RUN.k : "manana"; clearInterval(tInt); tInt = null; RUN = null; pintarRutina(k); };
   document.querySelectorAll("[data-blk]").forEach(function (b) {
     b.onclick = function () {
       var hoy = hoyISO(), doc = P[hoy] || (P[hoy] = {fecha: hoy}), h = b.dataset.blk;
