@@ -1368,8 +1368,8 @@ setInterval(function () {
 }, 60000);
 </script>
 <script type="module">
-// Cuerpo 3D de la pestaña WHOOP (2026-11-01), como el panel del reel de @mrvaloriscale: figura en holograma que gira y
-// respira sobre anillos, con el color de la banda de recuperación y el piso latiendo al pulso en reposo. three.js r180
+// Cuerpo 3D de la pestaña WHOOP (2026-11-01; sólido desde el 2026-11-05): figura que gira y
+// respira sobre anillos, con luces de contorno del color de la banda de recuperación y el piso latiendo al pulso. three.js r180
 // de cdnjs (mapa de importación en <head>); el cargador de glTF no está en cdnjs y viene de jsdelivr con la misma versión.
 // El cuerpo (2026-11-05, Ignacio: "debe tener forma de cuerpo atlético de peleador") es cuerpo.glb, armado con la malla base y
 // los targets de MakeHuman, que son CC0 (LICENSE.ASSETS.md de makehumancommunity/makehuman): hombre joven, músculo alto, peso
@@ -1384,69 +1384,58 @@ const quieto = matchMedia("(prefers-reduced-motion: reduce)");
 const pedido = {cont: null, color: "#b5f23d", bpm: 60, resp: 15};
 let S = null, carga = null;
 
-// Holograma: borde según el ángulo de vista, líneas horizontales finas y una banda de escaneo que recorre el cuerpo.
-const VS = `
-#include <common>
-#include <skinning_pars_vertex>
-varying vec3 vN; varying vec3 vV; varying float vY;
-void main() {
-  #include <skinbase_vertex>
-  #include <begin_vertex>
-  #include <beginnormal_vertex>
-  #include <skinnormal_vertex>
-  #include <skinning_vertex>
-  vec4 mundo = modelMatrix * vec4(transformed, 1.0);
-  vec4 mv = viewMatrix * mundo;
-  vN = normalize(normalMatrix * objectNormal);
-  vV = normalize(-mv.xyz);
-  vY = mundo.y;
-  gl_Position = projectionMatrix * mv;
-}`;
-const FS = `
-uniform vec3 uColor; uniform float uTime; uniform float uScan; uniform float uAlpha;
-varying vec3 vN; varying vec3 vV; varying float vY;
-void main() {
-  float borde = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.0);
-  float lineas = smoothstep(0.55, 1.0, sin(vY * 260.0 - uTime * 3.0));
-  float banda = exp(-pow((vY - uScan) * 9.0, 2.0));
-  float a = (0.025 + 0.85 * borde + 0.07 * lineas + 0.7 * banda) * uAlpha;
-  gl_FragColor = vec4(uColor * (0.4 + 0.9 * borde) + vec3(0.3) * banda, a);
-  #include <colorspace_fragment>
-}`;
+// Postura de escaneo: de pie, brazos sueltos a los costados y rodillas apenas flexionadas. Cada paso gira un hueso del
+// esqueleto de MakeHuman sobre un eje del mundo (el cuerpo mira a +z), en orden de padre a hijo. Una guardia de pelea queda
+// pendiente: sin huesos de dedos las manos no cierran el puño y se ven abiertas.
+const POSE = [
+  ["spine01", [0, 1, 0], -4], ["head", [1, 0, 0], 3],
+  ["upperarm01L", [0, 0, 1], -43], ["upperarm01L", [1, 0, 0], -4], ["lowerarm01L", [1, 0, 0], 30],
+  ["upperarm01R", [0, 0, 1], 43], ["upperarm01R", [1, 0, 0], -4], ["lowerarm01R", [1, 0, 0], 30],
+  ["upperleg01L", [1, 0, 0], -3], ["lowerleg01L", [1, 0, 0], 5], ["upperleg01R", [1, 0, 0], -2], ["lowerleg01R", [1, 0, 0], 4]
+];
+const nomHueso = n => n.replace(/[^a-z0-9]/gi, "");
 
 async function crear() {
   const T = await import("three");
   const {GLTFLoader} = await import(`https://cdn.jsdelivr.net/npm/three@${V}/examples/jsm/loaders/GLTFLoader.js`);
   const r = new T.WebGLRenderer({antialias: true, alpha: true, powerPreference: "low-power"});
   r.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  r.toneMapping = T.ACESFilmicToneMapping; r.toneMappingExposure = 1.05;
   r.domElement.style.touchAction = "pan-y";
   const escena = new T.Scene(), cam = new T.PerspectiveCamera(30, 1, 0.1, 40);
-  cam.position.set(0, 1.85, 4.75); cam.lookAt(0, 1.0, 0);
+  cam.position.set(0, 1.55, 4.6); cam.lookAt(0, 0.95, 0);
   const color = new T.Color(pedido.color);
-  const U = {uColor: {value: color}, uTime: {value: 0}, uScan: {value: -5}};
-  const mat = (alfa, malla) => new T.ShaderMaterial({uniforms: {uColor: U.uColor, uTime: U.uTime, uScan: U.uScan, uAlpha: {value: alfa}},
-    vertexShader: VS, fragmentShader: FS, transparent: true, depthWrite: false, blending: T.AdditiveBlending, wireframe: malla});
-  const piel = mat(1, false), red = mat(0.07, true), junta = mat(0.3, false);
+  // Cuerpo sólido (Ignacio, 2026-11-05: "sólido y realista"): piel mate, luz principal cálida arriba a la izquierda, relleno
+  // tenue y dos luces de contorno por detrás con el color de la banda de recuperación, como una foto de estudio.
+  const piel = new T.MeshStandardMaterial({color: 0x9c7d68, roughness: 0.48, metalness: 0.02});
+  escena.add(new T.HemisphereLight(0xdfe6ff, 0x1a1410, 0.25));
+  const luz = new T.DirectionalLight(0xfff1e0, 3.2); luz.position.set(-3.2, 4.2, 1.6); escena.add(luz);
+  const relleno = new T.DirectionalLight(0xbfd4ff, 0.18); relleno.position.set(2.5, 1.2, 2.0); escena.add(relleno);
+  const contornos = [[-2.6, 2.2, -2.4], [2.6, 1.6, -2.2]].map(([x, y, z]) => { const l = new T.DirectionalLight(color, 3.0); l.position.set(x, y, z); escena.add(l); return l; });
 
   const gltf = await new GLTFLoader().loadAsync(CUERPO);
-  const modelo = gltf.scene, fig = new T.Group(), mallas = [];
-  modelo.traverse(o => { if (o.isMesh) mallas.push(o); });
-  // Las piezas de las articulaciones del maniquí van tenues: a plena luz se ven como manchas sobre el cuerpo.
-  mallas.forEach(o => {
-    o.frustumCulled = false;
-    if (/joint/i.test(o.name)) { o.material = junta; return; }
-    o.material = piel; const c = o.clone(); c.material = red; o.parent.add(c);
+  const modelo = gltf.scene, fig = new T.Group(), huesos = {};
+  modelo.traverse(o => {
+    if (o.isMesh) { o.frustumCulled = false; o.material = piel; }
+    if (o.isBone) huesos[nomHueso(o.name)] = o;
   });
-  // Mide el cuerpo ya posado y lo deja de ALTURA con los pies en el piso.
+  const gr = Math.PI / 180, qp = new T.Quaternion();
+  for (const [n, eje, a] of POSE) {
+    const h = huesos[nomHueso(n)]; if (!h) continue;
+    h.parent.updateMatrixWorld(true); h.parent.getWorldQuaternion(qp);
+    h.quaternion.premultiply(new T.Quaternion().setFromAxisAngle(new T.Vector3(...eje).applyQuaternion(qp.invert()), a * gr));
+  }
+  const base = {};
+  for (const n of ["lowerleg01L", "lowerleg01R"]) { const h = huesos[nomHueso(n)]; if (h) base[n] = h.rotation.x; }
+  // Mide el cuerpo ya posado y lo deja con los pies en el piso.
   modelo.updateMatrixWorld(true);
-  const caja = new T.Box3().setFromObject(modelo, true), k = ALTURA / ((caja.max.y - caja.min.y) || ALTURA);
-  modelo.scale.multiplyScalar(k);
-  modelo.position.set(-(caja.min.x + caja.max.x) / 2 * k, -caja.min.y * k, -(caja.min.z + caja.max.z) / 2 * k);
+  const caja = new T.Box3().setFromObject(modelo, true);
+  modelo.position.set(-(caja.min.x + caja.max.x) / 2, -caja.min.y, -(caja.min.z + caja.max.z) / 2);
   fig.add(modelo); fig.rotation.y = 0.5; escena.add(fig);
-  const mixer = new T.AnimationMixer(modelo), quieta = gltf.animations.find(a => /idle/i.test(a.name));
-  if (quieta) { quieta.tracks = quieta.tracks.filter(p => !/\.scale$/.test(p.name)); mixer.clipAction(quieta).play(); }
+  // Las rodillas ceden un poco al ritmo de la respiración, como un peleador listo para moverse.
+  const balanceo = s => { for (const n in base) huesos[nomHueso(n)].rotation.x = base[n] + s * 1.5 * gr; };
 
-  // Anillos del reel: piso doble, rodillas, cadera, pecho y sobre la cabeza; uno más acompaña la banda de escaneo.
+  // Anillos del piso (doble, late al pulso en reposo) y uno que sube y baja por el cuerpo, como un escáner.
   const lineas = [];
   const anillo = (y, rad, op) => {
     const pts = [];
@@ -1455,7 +1444,6 @@ async function crear() {
     escena.add(l); lineas.push(l); return l;
   };
   const piso = anillo(0.005, 0.5, 0.9); anillo(0.005, 0.41, 0.3);
-  [[0.48, 0.34], [0.98, 0.33], [1.42, 0.31], [2.0, 0.27]].forEach(([y, rad]) => anillo(y * ALTURA / 1.8, rad, 0.3));
   const barrido = anillo(0, 0.34, 0);
   const tela = document.createElement("canvas"); tela.width = tela.height = 128;
   const g = tela.getContext("2d"), grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
@@ -1482,13 +1470,13 @@ async function crear() {
     if (!c || !c.isConnected || c.closest("[hidden]") || document.hidden) { vivo = false; return; }
     const dt = prev ? Math.min(0.05, (ahora - prev) / 1000) : 0, mueve = !quieto.matches;
     prev = ahora;
-    if (mueve) { t += dt; mixer.update(dt); if (!arr) fig.rotation.y += dt * 0.3; }
-    const fase = (t % 4.5) / 4.5, y = -0.15 + fase * 2.35;
-    U.uTime.value = t; U.uScan.value = mueve ? y : -5;
-    barrido.position.y = y; barrido.material.opacity = mueve ? 0.6 * Math.sin(Math.PI * fase) : 0;
-    // Respira a su frecuencia respiratoria de anoche (WHOOP, respiraciones por minuto): el tórax se abre y se cierra.
+    if (mueve) { t += dt; if (!arr) fig.rotation.y += dt * 0.3; }
+    const fase = (t % 4.5) / 4.5, y = 0.05 + fase * 1.75;
+    barrido.position.y = y; barrido.material.opacity = mueve ? 0.45 * Math.sin(Math.PI * fase) : 0;
+    // Respira a su frecuencia respiratoria de anoche (WHOOP, respiraciones por minuto): el tórax se abre y se cierra, y la
+    // guardia se balancea con el mismo ritmo.
     const aire = mueve ? Math.sin(t * Math.PI * 2 * pedido.resp / 60) : 0;
-    fig.scale.set(1 + 0.014 * aire, 1 + 0.004 * aire, 1 + 0.02 * aire);
+    fig.scale.set(1 + 0.01 * aire, 1, 1 + 0.014 * aire); balanceo(aire);
     const latido = Math.exp(-((t * pedido.bpm / 60) % 1) * 6);
     piso.material.opacity = 0.5 + 0.5 * latido; brillo.material.opacity = 0.3 + 0.45 * latido; brillo.scale.setScalar(1 + 0.07 * latido);
     const w = c.clientWidth, h = c.clientHeight;
@@ -1497,13 +1485,14 @@ async function crear() {
     if (mueve || arr) requestAnimationFrame(cuadro); else vivo = false;
   };
   const pedirCuadro = () => { if (vivo) return; vivo = true; prev = 0; requestAnimationFrame(cuadro); };
-  S = {r, color, lineas, brillo, pedirCuadro, tam};
+  S = {r, color, lineas, brillo, pedirCuadro, tam, contornos};
 }
 
 function aplicar() {
   S.color.set(pedido.color);
   S.lineas.forEach(l => l.material.color.set(pedido.color));
   S.brillo.material.color.set(pedido.color);
+  S.contornos.forEach(l => l.color.set(pedido.color));
   if (S.r.domElement.parentNode !== pedido.cont) { pedido.cont.appendChild(S.r.domElement); S.tam.w = S.tam.h = 0; }
   const aviso = document.getElementById("wh-estado3d");
   if (aviso) aviso.hidden = true;
