@@ -1371,24 +1371,15 @@ setInterval(function () {
 // Cuerpo 3D de la pestaña WHOOP (2026-11-01), como el panel del reel de @mrvaloriscale: figura en holograma que gira y
 // respira sobre anillos, con el color de la banda de recuperación y el piso latiendo al pulso en reposo. three.js r180
 // de cdnjs (mapa de importación en <head>); el cargador de glTF no está en cdnjs y viene de jsdelivr con la misma versión.
-// El cuerpo es el maniquí X Bot de los ejemplos de three.js, ajustado al físico de Ignacio (2026-11-05: 60 kg, "prácticamente
-// puro músculo", 1,71 m hoy con compensaciones de postura y ~1,74 m al corregirlas). No hay un modelo libre (CC0/CC-BY) de cuerpo
-// muscular servido desde un CDN, así que se engrosan sus huesos: pecho, espalda, hombros, brazos y piernas más anchos y cintura
-// fina. El repo es público: aquí no va un escaneo real de su cuerpo. Cuando mejore la postura, se cambia ALTURA.
+// El cuerpo (2026-11-05, Ignacio: "debe tener forma de cuerpo atlético de peleador") es cuerpo.glb, armado con la malla base y
+// los targets de MakeHuman, que son CC0 (LICENSE.ASSETS.md de makehumancommunity/makehuman): hombre joven, músculo alto, peso
+// bajo (60 kg magro), proporciones ideales, espalda en V, dorsales, pectoral, brazos y piernas marcados, 1,71 m (su altura hoy
+// con compensaciones de postura; ~1,74 m al corregirlas). Lo arma scripts/entreno_cuerpo.py; no es un escaneo real de su cuerpo,
+// que no va en el repo público mi-entreno.
 // Se descarga solo al abrir la pestaña y deja de dibujar cuando la pestaña o la app no están a la vista.
 const V = "0.180.0";
-const CUERPO = "https://cdn.jsdelivr.net/gh/mrdoob/three.js@r180/examples/models/gltf/Xbot.glb";
+const CUERPO = new URL("cuerpo.glb", location.href).href;
 const ALTURA = 1.71;
-// Escala de cada hueso [ancho, largo, profundidad] en sus ejes locales; el hijo hereda la del padre, por eso cuello y
-// hombros devuelven parte del ancho del pecho.
-const FISICO = {
-  Spine: [0.94, 1, 0.92], Spine1: [1.06, 1, 1.06], Spine2: [1.1, 1, 1.12], Neck: [0.95, 1, 0.92], Head: [0.9, 0.9, 0.9],
-  LeftShoulder: [1.05, 1.1, 1.05], RightShoulder: [1.05, 1.1, 1.05],
-  LeftArm: [1.18, 1, 1.18], RightArm: [1.18, 1, 1.18], LeftForeArm: [0.97, 1, 0.97], RightForeArm: [0.97, 1, 0.97],
-  LeftHand: [0.88, 0.95, 0.88], RightHand: [0.88, 0.95, 0.88],
-  LeftUpLeg: [1.12, 1, 1.12], RightUpLeg: [1.12, 1, 1.12], LeftLeg: [1.02, 1, 1.04], RightLeg: [1.02, 1, 1.04],
-  LeftFoot: [0.88, 1, 0.9], RightFoot: [0.88, 1, 0.9]
-};
 const quieto = matchMedia("(prefers-reduced-motion: reduce)");
 const pedido = {cont: null, color: "#b5f23d", bpm: 60, resp: 15};
 let S = null, carga = null;
@@ -1446,8 +1437,6 @@ async function crear() {
     if (/joint/i.test(o.name)) { o.material = junta; return; }
     o.material = piel; const c = o.clone(); c.material = red; o.parent.add(c);
   });
-  // Físico: escala de huesos (la animación de reposo no trae pistas de escala, y si las trajera se quitan abajo).
-  modelo.traverse(o => { const e = o.isBone && FISICO[o.name.replace(/^mixamorig:?/, "")]; if (e) o.scale.set(e[0], e[1], e[2]); });
   // Mide el cuerpo ya posado y lo deja de ALTURA con los pies en el piso.
   modelo.updateMatrixWorld(true);
   const caja = new T.Box3().setFromObject(modelo, true), k = ALTURA / ((caja.max.y - caja.min.y) || ALTURA);
