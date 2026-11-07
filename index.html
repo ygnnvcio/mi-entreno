@@ -473,6 +473,9 @@ function lunesDe(f) { return addDias(f, -((dow(f) + 6) % 7)); }
 function fc(f) { return +f.slice(8) + "/" + f.slice(5, 7); }
 function diaDe(f) {
   var w = dow(f), d = D.rutina.dias.filter(function (d) { return d.dow === w; })[0];
+  // Día puntual (dia_fechas): reemplaza el día de la semana solo en esa fecha, con el mismo dow.
+  var x = (D.rutina.dia_fechas || {})[f];
+  if (x) return Object.assign({dow: w}, x);
   // Día en casa (casa_fechas): cada ejercicio usa su versión "casa" con el mismo tier; el estándar del gym no cambia.
   if (!d || (D.rutina.casa_fechas || []).indexOf(f) < 0) return d;
   return Object.assign({}, d, { lugar: d.lugar_casa || d.lugar, ej: d.ej.map(function (x) { return x.casa ? Object.assign({}, x, x.casa) : x; }) });
