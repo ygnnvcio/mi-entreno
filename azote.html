@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Azote</title>
+<style>
+/* Prototipo de la cuerda del leaderboard (Ignacio, 2026-11-10: "una cuerda la cual se pueda azotar donde la persona no vaya";
+   referencia que pidió: OpenWhip, github.com/GitFrog1111/OpenWhip). Ese repo no tiene licencia: no se copia su código ni
+   sus sonidos; se replica el comportamiento (mango rígido y punta suelta, restallido por velocidad de la punta,
+   cuerda con borde blanco, aquí de cuero) con código propio y un chasquido sintetizado. */
+:root{--bg:#0b0d10;--card:#14171c;--ink:#eef0ec;--mut:#98a0a9;--line:#242a31;--acc:#c9a24a;--rojo:#e0533d}
+*{box-sizing:border-box;margin:0}
+html,body{background:var(--bg);color:var(--ink);font:15px/1.4 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;height:100%;overflow:hidden;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+header{padding:18px 16px 8px}
+header small{color:var(--acc);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:12px}
+header h1{font-size:24px;margin-top:2px}
+header p{color:var(--mut);font-size:13.5px;margin-top:4px}
+#escena{display:block;width:100%;touch-action:none}
+#marcador{position:fixed;left:16px;right:16px;bottom:22px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center}
+#marcador b{font-size:22px;color:var(--rojo)}
+#marcador small{color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <small>Leaderboard · prototipo</small>
+  <h1>No fue al gym hoy</h1>
+  <p>Toca la pantalla y el látigo queda en tu dedo. Muévelo rápido para que restalle encima de él.</p>
+</header>
+<canvas id="escena"></canvas>
+<div id="marcador"><span>Azotes de hoy <small id="cr">· 0 chasquidos</small></span><b id="n">0</b></div>
+<script>
+// Física: integración de Verlet con el primer punto clavado al dedo. Los primeros tramos siguen el ángulo del mango
+// (resorte angular que se inclina con el movimiento del dedo) y cada articulación tiene un límite de doblez que crece
+// del mango a la punta. Restalla cuando la punta supera CHASQ veces el largo total por cuadro.
+var C = {tramos: 24, afinar: 0.6, gravedad: 0.9, roce: 0.965, iter: 14,
+  anguloBase: -1.1, apuntarX: 0.035, apuntarY: 0.02, tope: 2.0, resorte: 0.6, rocesAng: 0.1, tramosMango: 2,
+  dobleMango: 16, doblePunta: 130, rigMango: 0.8, rigPunta: 0.12, CHASQ: 0.45, espera: 300, esperaGolpe: 350, gracia: 400,
+  anchoMango: 7, anchoPunta: 2.5, halo: 3};
+var cv = document.getElementById("escena"), cx = cv.getContext("2d"), dpr = Math.min(2, window.devicePixelRatio || 1);
+var W, H, L, largo = [], cuerda = [], dedo = {x: 0, y: 0, px: 0, py: 0}, ang = C.anguloBase, vAng = 0;
+var av = {x: 0, y: 0, r: 46, sacude: 0, rojo: 0, marcas: []}, fx = [], golpes = 0, chasq = 0, ultimo = 0, ultimoG = 0, desde = performance.now(), audio = null;
+
+function medir() {
+  W = window.innerWidth; H = window.innerHeight - cv.getBoundingClientRect().top - 80;
+  cv.width = W * dpr; cv.height = H * dpr; cv.style.height = H + "px"; cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  av.x = W * 0.66; av.y = H * 0.36;
+  var base = Math.min(W, H) * 0.8 / (C.tramos * (1 - (1 - C.afinar) / 2));   // largo total ≈ 95 % del lado corto
+  largo = []; L = 0;
+  for (var i = 0; i < C.tramos; i++) { var l = base * (1 - (i / (C.tramos - 1)) * (1 - C.afinar)); largo.push(l); L += l; }
+  if (!cuerda.length) armar(W * 0.2, H * 0.78);
+}
+function armar(x, y) {
+  dedo.x = dedo.px = x; dedo.y = dedo.py = y; ang = C.anguloBase; vAng = 0; cuerda = [];
+  var px = x, py = y;
+  for (var i = 0; i <= C.tramos; i++) {   // arco hacia arriba y a la derecha desde el mango
+    cuerda.push({x: px, y: py, px: px, py: py});
+    if (i < C.tramos) { var a = C.anguloBase + i * 0.09; px += Math.cos(a) * largo[i]; py += Math.sin(a) * largo[i]; }
+  }
+}
+function lerp(a, b, t) { return a + (b - a) * t; }
+function envolver(a) { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; }
+
+function apuntar() {   // el mango se inclina con el movimiento del dedo y vuelve a su ángulo con un resorte
+  var mx = dedo.x - dedo.px, my = dedo.y - dedo.py;
+  var meta = C.anguloBase + Math.max(-C.tope, Math.min(C.tope, mx * C.apuntarX + my * C.apuntarY));
+  vAng += envolver(meta - ang) * C.resorte; vAng *= C.rocesAng; ang = envolver(ang + vAng);
+}
+function poseMango() {
+  var dx = Math.cos(ang), dy = Math.sin(ang);
+  for (var i = 1; i <= C.tramos && i <= C.tramosMango; i++) {
+    var a = cuerda[i - 1], b = cuerda[i], k = lerp(0.9, 0.5, (i - 1) / C.tramosMango);
+    b.x = lerp(b.x, a.x + dx * largo[i - 1], k); b.y = lerp(b.y, a.y + dy * largo[i - 1], k);
+  }
+}
+function limitarDoblez() {
+  for (var i = 1; i < cuerda.length - 1; i++) {
+    var t = i / (cuerda.length - 1), max = lerp(C.dobleMango, C.doblePunta, t) * Math.PI / 180, rig = lerp(C.rigMango, C.rigPunta, t);
+    var a = cuerda[i - 1], b = cuerda[i], c = cuerda[i + 1];
+    var a1 = Math.atan2(b.y - a.y, b.x - a.x), a2 = Math.atan2(c.y - b.y, c.x - b.x), d = envolver(a2 - a1);
+    if (Math.abs(d) <= max) continue;
+    var meta = a1 + Math.sign(d) * max, l = Math.hypot(c.x - b.x, c.y - b.y);
+    c.x = lerp(c.x, b.x + Math.cos(meta) * l, rig); c.y = lerp(c.y, b.y + Math.sin(meta) * l, rig);
+  }
+}
+function paso() {
+  apuntar();
+  for (var i = 1; i < cuerda.length; i++) {
+    var p = cuerda[i], vx = (p.x - p.px) * C.roce, vy = (p.y - p.py) * C.roce;
+    p.px = p.x; p.py = p.y; p.x += vx; p.y += vy + C.gravedad;
+  }
+  var h = cuerda[0]; h.x = h.px = dedo.x; h.y = h.py = dedo.y;
+  poseMango();
+  for (var k = 0; k < C.iter; k++) {
+    for (var j = 0; j < cuerda.length - 1; j++) {
+      var a = cuerda[j], b = cuerda[j + 1], dx = b.x - a.x, dy = b.y - a.y, d = Math.hypot(dx, dy) || 1e-4, f = (d - largo[j]) / d * 0.5;
+      if (j === 0) { b.x -= dx * f * 2; b.y -= dy * f * 2; } else { a.x += dx * f; a.y += dy * f; b.x -= dx * f; b.y -= dy * f; }
+    }
+    limitarDoblez(); poseMango();
+    cuerda.forEach(function (p) { if (p.y > H - 4) p.y = H - 4; });   // solo piso: en las paredes se trababa y vibraba
+  }
+  var t = cuerda[cuerda.length - 1], v = Math.hypot(t.x - t.px, t.y - t.py), ahora = performance.now();
+  if (ahora - desde < C.gracia) { dedo.px = dedo.x; dedo.py = dedo.y; return; }   // recién tocada: se acomoda sin restallar
+  var cerca = function (p) { return Math.hypot(p.x - av.x, p.y - av.y) < av.r + 22; };
+  // Roce rápido de la punta sobre el avatar también es golpe, aunque no llegue a restallar.
+  // Golpe y chasquido llevan esperas separadas: los chasquidos seguidos no tapan el golpe.
+  var roce = cuerda.slice(-4).some(cerca) && v > C.CHASQ * L / 20 && ahora - ultimoG > C.esperaGolpe;
+  if (roce) { ultimoG = ahora; ultimo = ahora; sonido(Math.min(1, v / (C.CHASQ * L / 5))); golpe(t, Math.min(1, v / (C.CHASQ * L / 5))); }
+  else if (v > C.CHASQ * L / 10 && ahora - ultimo > C.espera) {
+    ultimo = ahora; chasq++; document.getElementById("cr").textContent = "· " + chasq + (chasq === 1 ? " chasquido" : " chasquidos");
+    var fuerza = Math.min(1, v / (C.CHASQ * L / 5));
+    sonido(fuerza); fx.push({x: t.x, y: t.y, vida: 1, chispa: true});
+    // Le pega si el restallido cae sobre él (la punta o el último tramo dentro del avatar, con un margen).
+    if (cuerda.slice(-4).some(cerca) && ahora - ultimoG > C.esperaGolpe) { ultimoG = ahora; golpe(t, fuerza); }
+  }
+  dedo.px = dedo.x; dedo.py = dedo.y;
+}
+function golpe(t, fuerza) {
+  golpes++; document.getElementById("n").textContent = golpes;
+  av.sacude = 1; av.rojo = 1;
+  var a = Math.random() * Math.PI;   // marca roja cruzada sobre el avatar, se borra sola
+  av.marcas.push({a: a, vida: 1});
+  fx.push({x: av.x, y: av.y - av.r - 12, vida: 1, txt: fuerza > 0.7 ? "¡ZAS!" : "¡zas!"});
+  if (navigator.vibrate) navigator.vibrate(fuerza > 0.7 ? 70 : 35);
+}
+// Chasquido sintetizado: clic seco + ruido corto filtrado (sin archivos de audio de terceros).
+function sonido(fuerza) {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    var sr = audio.sampleRate, n = Math.floor(sr * 0.09), buf = audio.createBuffer(1, n, sr), d = buf.getChannelData(0);
+    for (var i = 0; i < n; i++) { var e = Math.pow(1 - i / n, 7); d[i] = (Math.random() * 2 - 1) * e + (i < sr * 0.002 ? 0.9 * (1 - i / (sr * 0.002)) : 0); }
+    var s = audio.createBufferSource(), g = audio.createGain(), f = audio.createBiquadFilter();
+    f.type = "highpass"; f.frequency.value = 1400 + 1200 * fuerza; g.gain.value = 0.3 + 0.7 * fuerza;
+    s.buffer = buf; s.connect(f); f.connect(g); g.connect(audio.destination); s.start();
+  } catch (e) { /* sin sonido */ }
+}
+
+function trazo(ancho, color) {   // cuerda afinada: un trazo por tramo con su ancho
+  cx.strokeStyle = color; cx.lineCap = "round"; cx.lineJoin = "round";
+  for (var i = 0; i < cuerda.length - 1; i++) {
+    cx.lineWidth = ancho(i, i / (cuerda.length - 2));
+    cx.beginPath(); cx.moveTo(cuerda[i].x, cuerda[i].y); cx.lineTo(cuerda[i + 1].x, cuerda[i + 1].y); cx.stroke();
+  }
+}
+function dibujar() {
+  cx.clearRect(0, 0, W, H);
+  // avatar
+  var sx = av.sacude ? Math.sin(performance.now() / 16) * 10 * av.sacude : 0;
+  cx.save(); cx.translate(av.x + sx, av.y);
+  cx.fillStyle = "#1d2229"; cx.beginPath(); cx.arc(0, 0, av.r, 0, Math.PI * 2); cx.fill();
+  if (av.rojo > 0.03) { cx.fillStyle = "rgba(224,83,61," + (0.75 * av.rojo) + ")"; cx.beginPath(); cx.arc(0, 0, av.r, 0, Math.PI * 2); cx.fill(); }
+  cx.save(); cx.beginPath(); cx.arc(0, 0, av.r, 0, Math.PI * 2); cx.clip();
+  av.marcas = av.marcas.filter(function (m) { return m.vida > 0; });
+  av.marcas.forEach(function (m) {
+    cx.strokeStyle = "rgba(224,83,61," + m.vida + ")"; cx.lineWidth = 5; cx.lineCap = "round";
+    cx.beginPath(); cx.moveTo(-Math.cos(m.a) * av.r, -Math.sin(m.a) * av.r); cx.lineTo(Math.cos(m.a) * av.r, Math.sin(m.a) * av.r); cx.stroke();
+    m.vida -= 0.004;
+  });
+  cx.restore();
+  cx.strokeStyle = "#eef0ec"; cx.lineWidth = 2; cx.beginPath(); cx.arc(0, 0, av.r, 0, Math.PI * 2); cx.stroke();
+  cx.fillStyle = "#eef0ec"; cx.font = "700 28px -apple-system,sans-serif"; cx.textAlign = "center"; cx.textBaseline = "middle";
+  cx.fillText(av.sacude > 0.1 ? "×_×" : golpes ? "ಠ_ಠ" : "?", 0, 2);
+  cx.fillStyle = "#98a0a9"; cx.font = "600 13px -apple-system,sans-serif"; cx.fillText("0 de 1 hoy", 0, av.r + 20);
+  cx.restore();
+  av.sacude *= 0.9; av.rojo *= 0.92; if (av.sacude < 0.02) av.sacude = 0;
+  // látigo: borde blanco y núcleo negro; el mango más grueso
+  trazo(function (i, t) { return lerp(C.anchoMango, C.anchoPunta, t) + C.halo * 2 + (i < C.tramosMango ? 5 : 0); }, "#ffffff");
+  trazo(function (i, t) { return lerp(C.anchoMango, C.anchoPunta, t) + (i < C.tramosMango ? 5 : 0); }, "#7a4a24");   // cuero
+  cx.strokeStyle = "#2a1a0e"; cx.lineWidth = C.anchoMango + 5; cx.lineCap = "round";   // mango oscuro
+  cx.beginPath(); cx.moveTo(cuerda[0].x, cuerda[0].y); for (var i = 1; i <= C.tramosMango; i++) cx.lineTo(cuerda[i].x, cuerda[i].y); cx.stroke();
+  // efectos: chispa del restallido y texto del golpe
+  fx = fx.filter(function (z) { return z.vida > 0; });
+  fx.forEach(function (z) {
+    cx.globalAlpha = Math.max(0, z.vida);
+    if (z.chispa) {
+      cx.strokeStyle = "#ffffff"; cx.lineWidth = 2;
+      for (var k = 0; k < 6; k++) { var a = k * Math.PI / 3, r1 = 6 + 14 * (1 - z.vida), r2 = r1 + 8; cx.beginPath(); cx.moveTo(z.x + Math.cos(a) * r1, z.y + Math.sin(a) * r1); cx.lineTo(z.x + Math.cos(a) * r2, z.y + Math.sin(a) * r2); cx.stroke(); }
+      z.vida -= 0.08;
+    } else {
+      cx.fillStyle = "#e0533d"; cx.font = "800 " + (24 + 14 * (1 - z.vida)) + "px -apple-system,sans-serif"; cx.textAlign = "center";
+      cx.fillText(z.txt, z.x, z.y - 30 * (1 - z.vida)); z.vida -= 0.03;
+    }
+    cx.globalAlpha = 1;
+  });
+}
+function bucle() { paso(); dibujar(); requestAnimationFrame(bucle); }
+function pos(e) { var r = cv.getBoundingClientRect(); return {x: e.clientX - r.left, y: Math.max(8, Math.min(H - 8, e.clientY - r.top))}; }
+cv.addEventListener("pointerdown", function (e) {
+  var p = pos(e); cv.setPointerCapture(e.pointerId);
+  if (Math.hypot(p.x - dedo.x, p.y - dedo.y) > 40) { var dx = p.x - dedo.x, dy = p.y - dedo.y; cuerda.forEach(function (q) { q.x += dx; q.y += dy; q.px += dx; q.py += dy; }); }
+  dedo.x = dedo.px = p.x; dedo.y = dedo.py = p.y; desde = performance.now();
+});
+cv.addEventListener("pointermove", function (e) { var p = pos(e); dedo.x = p.x; dedo.y = p.y; });
+window.addEventListener("resize", medir);
+medir(); bucle();
+</script>
+</body>
+</html>
