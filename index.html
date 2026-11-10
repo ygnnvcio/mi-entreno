@@ -761,7 +761,7 @@ function sesionHtml(f, hoy) {
   var titulo = (f === hoy ? "Today's workout" : DIAS_N[dow(f)] + " " + fc(f));
   if (d.tipo === "libre") return '<div class="card"><div class="sub">' + titulo + '</div><h2>Rest day</h2><div class="sub">Descanso total. Si quieres, movilidad ligera.</div></div>';
   var hechosN = (prev.items || []).filter(function (x) { return x.hecho; }).length, futuro = f > hoy;
-  var out = '<div class="card" id="card-entreno"><div class="card-top"><div><div class="sub">' + titulo + '</div><h2>' + esc(nom(d)) + '</h2>' + (d.lugar ? '<div class="sub">Dónde: ' + esc(d.lugar) + '</div>' : "") + '</div></div>' +
+  var out = '<div class="card" id="card-entreno"><div class="card-top"><div><div class="sub">' + titulo + '</div><h2>' + esc(nom(d)) + '</h2>' + (d.lugar ? '<div class="sub">Dónde: ' + esc(d.lugar) + '</div>' : "") + (d.extra ? '<div class="sub">' + esc(d.extra) + '</div>' : "") + '</div></div>' +
     '<div class="barra"><i style="width:' + Math.round(hechosN / d.ej.length * 100) + '%"></i></div><div class="sub" style="margin-top:6px">' + hechosN + ' de ' + d.ej.length + ' ejercicios</div><div style="margin-top:8px">';
   var toca = -1;
   d.ej.forEach(function (x, i) { if (toca < 0 && !(marcas[x.n] || {}).hecho) toca = i; });
