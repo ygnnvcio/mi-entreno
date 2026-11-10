@@ -87,6 +87,7 @@ main{padding-inline:16px;max-width:620px;margin:0 auto}
 .videos a{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:7px 11px;min-height:36px}
 .videos a::before{content:"";width:0;height:0;border-left:8px solid var(--acc);border-top:5px solid transparent;border-bottom:5px solid transparent}
 .ej .fila,.ej label.chk{grid-column:2}
+.fila.serie{gap:2px}.fila.serie .escala{width:100%;margin-top:4px}
 
 .fila{display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap}
 input[type=number],input[type=text]{font:inherit;font-size:16px;color:var(--ink);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;width:100%;outline:none}
@@ -483,6 +484,10 @@ function diaDe(f) {
 }
 function corto(d) { return d.tipo === "libre" ? "Rest" : nom(d).split(" ")[0].replace("Recovery", "Recov.").replace("Athletics", "Athl."); }
 function esFuerza(d, x) { return d.tipo === "gym" && (x.peso === true || (x.peso !== false && !/ s\b|min| m\b/.test(x.sr))); }
+// Series y reps (Ignacio, 2026-11-10): las series del estándar quedan puestas; las reps se anotan sí o sí; si hizo menos
+// series lo marca en una fila opcional. "4 × 5–8" da 4 series; un rango "2–3 ×" da el tope. Tiempo o distancia no lleva reps.
+function seriesStd(x) { var m = /^(\d+)(?:\s*[–-]\s*(\d+))?\s*(?:×|x\b|rounds)/i.exec(x.sr || ""); return m ? +(m[2] || m[1]) : 0; }
+function conReps(x) { return seriesStd(x) > 0 && !/ s\b|min\b| m\b|rounds/.test(x.sr); }
 function hecho(f) { var e = E[f]; return !!(e && e.items && e.items.some(function (x) { return x.hecho; })); }
 function semanaN(f) { var l = lunesDe(f), n = 0; for (var i = 0; i < 7; i++) if (hecho(addDias(l, i))) n++; return n; }
 function protDe(f) { var c = C[f]; return c && c.items ? c.items.reduce(function (t, x) { return t + (x.prot || 0); }, 0) : 0; }
@@ -771,8 +776,10 @@ function sesionHtml(f, hoy) {
       (x.porque ? '<div class="porque">' + esc(x.porque) + '</div>' : "") +
       ((x.videos || []).length ? '<div class="videos">' + x.videos.map(function (v) { return '<a href="' + esc(v.url) + '" target="_blank" rel="noopener">' + esc(v.t || "Ver técnica") + '</a>'; }).join("") + '</div>' : "") +
       (a ? '<div class="antes">La vez pasada (' + fc(a.f) + '): ' + esc(a.peso ? a.peso + " lb" : "") + (a.reps ? " · " + esc(a.reps) : "") + '</div>' : "");
-    if (esFuerza(d, x)) out += '<div class="fila"><input id="peso-' + i + '" class="corto" type="number" inputmode="decimal" placeholder="lb" data-k="peso" value="' + esc(p.peso || "") + '" aria-label="Peso en libras">' +
-      '<input id="reps-' + i + '" style="flex:1;width:auto;min-width:0" type="text" inputmode="numeric" placeholder="reps por serie: 8 8 7" data-k="reps" value="' + esc(p.reps || "") + '" aria-label="Repeticiones por serie"></div>';
+    var sd = seriesStd(x), menos = p.series && p.series < sd ? +p.series : 0;
+    if (esFuerza(d, x) || conReps(x)) out += '<div class="fila">' + (esFuerza(d, x) ? '<input id="peso-' + i + '" class="corto" type="number" inputmode="decimal" placeholder="lb" data-k="peso" value="' + esc(p.peso || "") + '" aria-label="Peso en libras">' : "") +
+      '<input id="reps-' + i + '" style="flex:1;width:auto;min-width:0" type="text" inputmode="numeric" placeholder="reps · ' + (menos || sd) + ' series" data-k="reps" value="' + esc(p.reps || "") + '" aria-label="Repeticiones por serie (obligatorio)"></div>';
+    if (sd > 1) out += '<div class="fila serie"><span class="sub">' + sd + ' series de estándar. ¿Hiciste menos? Solo si fue así</span>' + escala("menos" + i + "_", sd - 1, menos || "") + '</div>';
     out += '<label class="chk"><input id="hecho-' + i + '" type="checkbox" data-k="hecho"' + (p.hecho ? " checked" : "") + '> Done</label></div>';
   });
   out += '</div><div style="margin-top:12px"><div class="n">¿Qué tan duro fue? (1 fácil, 10 al máximo)</div>' + escala("duro", 10, prev.duro) + '</div>' +
@@ -907,11 +914,23 @@ function enlazar(sel) {
   document.querySelectorAll(".ej-h").forEach(function (b) { b.onclick = function () { b.closest(".ej").classList.toggle("abierto"); }; });
   document.querySelectorAll('.ej input[data-k="hecho"]').forEach(function (c) {
     c.onchange = function () {   // como Hevy: marcas hecho, se cierra y se abre el siguiente que falta
-      var ej = c.closest(".ej"); ej.classList.toggle("hecho", c.checked);
+      var ej = c.closest(".ej"), rp = ej.querySelector('[data-k="reps"]');
+      if (c.checked && rp && !rp.value.trim()) { c.checked = false; rp.focus(); aviso("Anota las reps antes de marcarlo"); return; }   // reps sí o sí
+      ej.classList.toggle("hecho", c.checked);
       if (!c.checked) return;
       ej.classList.remove("abierto");
       var sig = ej.nextElementSibling; while (sig && sig.classList.contains("hecho")) sig = sig.nextElementSibling;
       if (sig && sig.classList.contains("ej")) { sig.classList.add("abierto"); sig.scrollIntoView({behavior: "smooth", block: "center"}); }
+    };
+  });
+  // Fila de menos series: tocar la marcada la quita (vuelve al estándar); el placeholder de reps sigue a las series.
+  document.querySelectorAll('.serie input[type="radio"]').forEach(function (rd) {
+    var antes = false;
+    rd.parentNode.onpointerdown = function () { antes = rd.checked; };
+    rd.onclick = function () {
+      if (antes) rd.checked = false;
+      var ej = rd.closest(".ej"), rp = ej.querySelector('[data-k="reps"]'), x = diaDe(sel).ej[+ej.dataset.i], m = ej.querySelector('.serie input:checked');
+      if (rp) rp.placeholder = "reps · " + (m ? m.value : seriesStd(x)) + " series";
     };
   });
   document.querySelectorAll("[data-sosi]").forEach(function (c) {
@@ -958,7 +977,10 @@ function enlazar(sel) {
     var items = d.ej.map(function (x, i) {
       var box = document.querySelector('.ej[data-i="' + i + '"]');
       var g = function (k) { var el = box.querySelector('[data-k="' + k + '"]'); return el ? (el.type === "checkbox" ? el.checked : el.value.trim()) : ""; };
-      return {ejercicio: x.n, hecho: g("hecho"), peso: g("peso"), reps: g("reps")};
+      var m = box.querySelector('input[name="menos' + i + '_"]:checked'), sd = seriesStd(x);
+      var it = {ejercicio: x.n, hecho: g("hecho"), peso: g("peso"), reps: g("reps")};
+      if (sd) { it.series = m ? +m.value : sd; it.series_std = sd; }
+      return it;
     });
     var r = document.querySelector('input[name="duro"]:checked');
     var doc = {fecha: sel, dia: d.n, items: items, duro: r ? r.value : "", dolor: $("#dolor").value.trim(), hora: horaLocal(), creado: new Date().toISOString()};
